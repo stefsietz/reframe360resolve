@@ -1,0 +1,1 @@
+C:\Users\Stefan\Anaconda3\python.exe ./HardcodeKernel.py OpenCLKernel.cpp GoproVRKernel.cl
