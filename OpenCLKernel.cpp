@@ -78,7 +78,7 @@ static HMODULE GetThisDllHandle()
 	return len ? (HMODULE)info.AllocationBase : NULL;
 }
 
-void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Params, const float* p_Input, float* p_Output)
+void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples)
 {
     cl_int error;
 
@@ -151,8 +151,19 @@ void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Params, c
 	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Params[1]);
 	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Params[2]);
 	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Params[3]);
+
+	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[0]);
+	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[1]);
+	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[2]);
+	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[3]);
+	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[4]);
+	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[5]);
+	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[6]);
+	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[7]);
+	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[8]);
     error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &p_Input);
     error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &p_Output);
+
     CheckError(error, "Unable to set kernel arguments");
 
     size_t localWorkSize[2], globalWorkSize[2];

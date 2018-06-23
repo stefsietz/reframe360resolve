@@ -33,11 +33,14 @@ public:
     virtual void multiThreadProcessImages(OfxRectI p_ProcWindow);
 
     void setSrcImg(OFX::Image* p_SrcImg);
-    void setParams(float p_ScaleR, float p_ScaleG, float p_ScaleB, float p_ScaleA);
+    void setParams(float* p_RotMat, float* p_Fov, float* p_Fisheye, int p_Samples);
 
 private:
     OFX::Image* _srcImg;
-    float _scales[4];
+    float* _rotMat;
+	float* _fov;
+	float* _fisheye;
+	int _samples;
 };
 
 ImageScaler::ImageScaler(OFX::ImageEffect& p_Instance)
@@ -45,7 +48,43 @@ ImageScaler::ImageScaler(OFX::ImageEffect& p_Instance)
 {
 }
 
-extern void RunCudaKernel(int p_Width, int p_Height, float* p_Gain, const float* p_Input, float* p_Output);
+void pitchMatrix(float pitch, float** out) {
+		(*out)[0] = 1.0;
+		(*out)[1] = 0;
+		(*out)[2] = 0;
+		(*out)[3] = 0;
+		(*out)[4] = cos(pitch);
+		(*out)[5] = -sin(pitch);
+		(*out)[6] = 0;
+		(*out)[7] = sin(pitch);
+		(*out)[8] = cos(pitch);
+}
+
+void yawMatrix(float yaw, float** out) {
+	(*out)[0] = cos(yaw);
+	(*out)[1] = 0;
+	(*out)[2] = sin(yaw);
+	(*out)[3] = 0;
+	(*out)[4] = 1.0;
+	(*out)[5] = 0;
+	(*out)[6] = -sin(yaw);
+	(*out)[7] = 0;
+	(*out)[8] = cos(yaw);
+}
+
+void matMul(const float* y, const float* p, float** outmat){
+	(*outmat)[0] = p[0] * y[0] + p[3] * y[1] + p[6] * y[2];
+	(*outmat)[1] = p[1] * y[0] + p[4] * y[1] + p[7] * y[2];
+	(*outmat)[2] = p[3] * y[0] + p[5] * y[1] + p[8] * y[2];
+	(*outmat)[3] = p[0] * y[3] + p[3] * y[4] + p[6] * y[5];
+	(*outmat)[4] = p[1] * y[3] + p[4] * y[4] + p[7] * y[5];
+	(*outmat)[5] = p[3] * y[3] + p[5] * y[4] + p[8] * y[5];
+	(*outmat)[6] = p[0] * y[6] + p[3] * y[7] + p[6] * y[8];
+	(*outmat)[7] = p[1] * y[6] + p[4] * y[7] + p[7] * y[8];
+	(*outmat)[8] = p[3] * y[6] + p[5] * y[7] + p[8] * y[8];
+}
+
+extern void RunCudaKernel(int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples);
 
 void ImageScaler::processImagesCUDA()
 {
@@ -56,7 +95,7 @@ void ImageScaler::processImagesCUDA()
     float* input = static_cast<float*>(_srcImg->getPixelData());
     float* output = static_cast<float*>(_dstImg->getPixelData());
 
-    RunCudaKernel(width, height, _scales, input, output);
+	RunCudaKernel(width, height, _fov, _fisheye, input, output, _rotMat, _samples);
 }
 
 #if defined(__APPLE__)
@@ -71,23 +110,32 @@ void ImageScaler::processImagesMetal()
     float* input = static_cast<float*>(_srcImg->getPixelData());
     float* output = static_cast<float*>(_dstImg->getPixelData());
 
-    RunMetalKernel(width, height, _scales, input, output);
+    RunMetalKernel(width, height, _params, input, output);
 }
 #endif
 
-extern void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Gain, const float* p_Input, float* p_Output);
+extern void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Gain, const float* p_Input, float* p_Output, float* p_Rotmat);
 
 void ImageScaler::processImagesOpenCL()
 {
-    const OfxRectI& bounds = _srcImg->getBounds();
+    /*const OfxRectI& bounds = _srcImg->getBounds();
     const int width = bounds.x2 - bounds.x1;
     const int height = bounds.y2 - bounds.y1;
 
     float* input = static_cast<float*>(_srcImg->getPixelData());
 	float* output = static_cast<float*>(_dstImg->getPixelData());
 
+	float* pitchMat = (float*)calloc(9, sizeof(float));
+	pitchMatrix(-_params[0], &pitchMat);
+	float* yawMat = (float*)calloc(9, sizeof(float));
+	yawMatrix(_params[1], &yawMat);
+	float* rotMat = (float*)calloc(9, sizeof(float));
+	matMul(yawMat, pitchMat, &rotMat);
 
-    RunOpenCLKernel(_pOpenCLCmdQ, width, height, _scales, input, output);
+    RunOpenCLKernel(_pOpenCLCmdQ, width, height, _params, input, output, rotMat);
+	free(pitchMat);
+	free(yawMat);
+	free(rotMat);*/
 }
 
 void ImageScaler::multiThreadProcessImages(OfxRectI p_ProcWindow)
@@ -107,7 +155,7 @@ void ImageScaler::multiThreadProcessImages(OfxRectI p_ProcWindow)
             {
                 for(int c = 0; c < 4; ++c)
                 {
-                    dstPix[c] = srcPix[c] * _scales[c];
+                    dstPix[c] = srcPix[c] * _samples;
                 }
             }
             else
@@ -130,12 +178,12 @@ void ImageScaler::setSrcImg(OFX::Image* p_SrcImg)
     _srcImg = p_SrcImg;
 }
 
-void ImageScaler::setParams(float p_ScaleR, float p_ScaleG, float p_ScaleB, float p_ScaleA)
+void ImageScaler::setParams(float* p_RotMat, float* p_Fov, float* p_Fisheye, int p_Samples)
 {
-    _scales[0] = p_ScaleR;
-    _scales[1] = p_ScaleG;
-    _scales[2] = p_ScaleB;
-    _scales[3] = p_ScaleA;
+	_rotMat = p_RotMat;
+	_fov = p_Fov;
+    _fisheye = p_Fisheye;
+    _samples = p_Samples;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,6 +220,17 @@ private:
     OFX::DoubleParam* m_Yaw;
     OFX::DoubleParam* m_Fov;
     OFX::DoubleParam* m_Fisheye;
+
+	OFX::DoubleParam* m_Blend;
+	OFX::DoubleParam* m_Accel;
+
+	OFX::DoubleParam* m_Shutter;
+	OFX::DoubleParam* m_Samples;
+
+	OFX::DoubleParam* m_Pitch2;
+	OFX::DoubleParam* m_Yaw2;
+	OFX::DoubleParam* m_Fov2;
+	OFX::DoubleParam* m_Fisheye2;
 };
 
 GainPlugin::GainPlugin(OfxImageEffectHandle p_Handle)
@@ -180,10 +239,21 @@ GainPlugin::GainPlugin(OfxImageEffectHandle p_Handle)
     m_DstClip = fetchClip(kOfxImageEffectOutputClipName);
     m_SrcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
 
-    m_Pitch = fetchDoubleParam("pitch");
+	m_Pitch = fetchDoubleParam("pitch");
     m_Yaw = fetchDoubleParam("yaw");
     m_Fov = fetchDoubleParam("fov");
     m_Fisheye = fetchDoubleParam("fisheye");
+
+	m_Blend = fetchDoubleParam("blend");
+	m_Accel = fetchDoubleParam("accel");
+
+	m_Shutter = fetchDoubleParam("shutter");
+	m_Samples = fetchDoubleParam("samples");
+
+	m_Pitch2 = fetchDoubleParam("pitch2");
+	m_Yaw2 = fetchDoubleParam("yaw2");
+	m_Fov2 = fetchDoubleParam("fov2");
+	m_Fisheye2 = fetchDoubleParam("fisheye2");
 
     // Set the enabledness of our RGBA sliders
     setEnabledness();
@@ -231,6 +301,38 @@ void GainPlugin::setEnabledness()
     m_Yaw->setEnabled(enable);
     m_Fov->setEnabled(enable);
     m_Fisheye->setEnabled(enable);
+
+	m_Blend->setEnabled(enable);
+	m_Accel->setEnabled(enable);
+
+	m_Pitch2->setEnabled(enable);
+	m_Yaw2->setEnabled(enable);
+	m_Fov2->setEnabled(enable);
+	m_Fisheye2->setEnabled(enable);
+}
+
+static float fitRange(float value, float in_min, float in_max, float out_min, float out_max){
+	float out = out_min + ((out_max - out_min) / (in_max - in_min)) * (value - in_min);
+	return std::min(out_max, std::max(out, out_min));
+}
+
+static float interpParam(OFX::DoubleParam* param, const OFX::RenderArguments& p_Args, float offset){
+	if (offset == 0){
+		return param->getValueAtTime(p_Args.time);
+	}
+	else if (offset < 0) {
+		offset = -offset;
+		float floor = std::floor(offset);
+		float frac = offset - floor;
+
+		return param->getValueAtTime(p_Args.time - (floor + 1))*frac + param->getValueAtTime(p_Args.time - floor)*(1 - frac);
+	}
+	else {
+		float floor = std::floor(offset);
+		float frac = offset - floor;
+
+		return param->getValueAtTime(p_Args.time + (floor + 1))*frac + param->getValueAtTime(p_Args.time + floor)*(1 - frac);
+	}
 }
 
 void GainPlugin::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderArguments& p_Args)
@@ -251,13 +353,70 @@ void GainPlugin::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
         OFX::throwSuiteStatusException(kOfxStatErrValue);
     }
 
-    double pitch = 1.0, yaw = 1.0, fov = 1.0, fisheye = 1.0;
+	double pitch = 1.0, yaw = 1.0, fov = 1.0, fisheye = 1.0, pitch2 = 1.0, yaw2 = 1.0, fov2 = 1.0, fisheye2 = 1.0, blend = 0.0, accel = 0.5;
 
+	int mb_samples = (int)m_Samples->getValueAtTime(p_Args.time);
+	float mb_shutter = m_Shutter->getValueAtTime(p_Args.time) * 0.5;
 
-	pitch = m_Pitch->getValueAtTime(p_Args.time);
-	yaw = m_Yaw->getValueAtTime(p_Args.time);
-	fov = m_Fov->getValueAtTime(p_Args.time);
-	fisheye = m_Fisheye->getValueAtTime(p_Args.time);
+	float* fovs = (float*)malloc(sizeof(float)*mb_samples);
+	float* fisheyes = (float*)malloc(sizeof(float)*mb_samples);
+	float* rotmats = (float*)malloc(sizeof(float)*mb_samples*9);
+
+	for (int i = 0; i < mb_samples; i++){
+		float offset = 0;
+		if (mb_samples > 1){
+			offset = fitRange((float)i, 0, mb_samples - 1.0f, -1.0f, 1.0f);
+		}
+
+		offset *= mb_shutter;
+
+		pitch = interpParam(m_Pitch, p_Args, offset);
+		yaw = interpParam(m_Yaw, p_Args, offset);
+		fov = interpParam(m_Fov, p_Args, offset);
+		fisheye = interpParam(m_Fisheye, p_Args, offset);
+
+		blend = interpParam(m_Blend, p_Args, offset);
+		accel = interpParam(m_Accel, p_Args, offset);
+
+		pitch2 = interpParam(m_Pitch2, p_Args, offset);
+		yaw2 = interpParam(m_Yaw2, p_Args, offset);
+		fov2 = interpParam(m_Fov2, p_Args, offset);
+		fisheye2 = interpParam(m_Fisheye2, p_Args, offset);
+
+		if (blend < 0.5){
+			blend = fitRange(blend, 0, 0.5, 0, 1);
+			blend = std::pow(blend, accel);
+			blend = fitRange(blend, 0, 1, 0, 0.5);
+		}
+		else{
+			blend = fitRange(blend, 0.5, 1.0, 0, 1);
+			blend = 1.0 - blend;
+			blend = std::pow(blend, accel);
+			blend = 1.0 - blend;
+			blend = fitRange(blend, 0, 1, 0.5, 1.0);
+		}
+
+		pitch = pitch * (1.0 - blend) + pitch2 * blend;
+		yaw = yaw * (1.0 - blend) + yaw2 * blend;
+		fov = fov * (1.0 - blend) + fov2 * blend;
+		fisheye = fisheye * (1.0 - blend) + fisheye2 * blend;
+
+		float* pitchMat = (float*)calloc(9, sizeof(float));
+		pitchMatrix(-pitch, &pitchMat);
+		float* yawMat = (float*)calloc(9, sizeof(float));
+		yawMatrix(yaw, &yawMat);
+		float* rotMat = (float*)calloc(9, sizeof(float));
+		matMul(yawMat, pitchMat, &rotMat);
+
+		free(pitchMat);
+		free(yawMat);
+
+		memcpy(&(rotmats[i * 9]), rotMat, sizeof(float) * 9);
+		free(rotMat);
+
+		fovs[i] = fov;
+		fisheyes[i] = fisheye;
+	}
     
     // Set the images
     p_ImageScaler.setDstImg(dst.get());
@@ -270,7 +429,7 @@ void GainPlugin::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
     p_ImageScaler.setRenderWindow(p_Args.renderWindow);
 
     // Set the scales
-	p_ImageScaler.setParams(pitch, yaw, fov, fisheye);
+	p_ImageScaler.setParams(rotmats, fovs, fisheyes, mb_samples);
 
     // Call the base class process member, this will call the derived templated process code
     p_ImageScaler.process();
@@ -310,7 +469,7 @@ void GainPluginFactory::describe(OFX::ImageEffectDescriptor& p_Desc)
 
     // Setup OpenCL and CUDA render capability flags
     p_Desc.setSupportsOpenCLRender(true);
-    p_Desc.setSupportsCudaRender(false);
+    p_Desc.setSupportsCudaRender(true);
     p_Desc.setSupportsMetalRender(false);
 }
 
@@ -355,24 +514,60 @@ void GainPluginFactory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
     // Make some pages and to things in
     PageParamDescriptor* page = p_Desc.definePageParam("Controls");
 
-    // Group param to group the scales
-    GroupParamDescriptor* componentScalesGroup = p_Desc.defineGroupParam("componentScales");
-    componentScalesGroup->setHint("Scales on the individual component");
-    componentScalesGroup->setLabels("Components", "Components", "Components");
+    GroupParamDescriptor* camera1ParamsGroup = p_Desc.defineGroupParam("camera1Params");
+    camera1ParamsGroup->setHint("Scales on the individual component");
+    camera1ParamsGroup->setLabels("Camera 1 Parameters", "Camera 1 Parameters", "Camera 1 Parameters");
 
 
-    // Make the four component scale params
-	DoubleParamDescriptor* param = defineParam(p_Desc, "pitch", "Pitch", "Up/down camera rotation", componentScalesGroup, -1, 1, 0);
+    // Make the camera 1 params
+	DoubleParamDescriptor* param = defineParam(p_Desc, "pitch", "Pitch", "Up/down camera rotation", camera1ParamsGroup, -1, 1, 0);
     page->addChild(*param);
 
-    param = defineParam(p_Desc, "yaw", "Yaw", "Left/right camera rotation", componentScalesGroup, -1, 1, 0);
+    param = defineParam(p_Desc, "yaw", "Yaw", "Left/right camera rotation", camera1ParamsGroup, -1, 1, 0);
     page->addChild(*param);
 
-    param = defineParam(p_Desc, "fov", "Field of View", "Camera field of view", componentScalesGroup, 0.01, 5, 1);
+    param = defineParam(p_Desc, "fov", "Field of View", "Camera field of view", camera1ParamsGroup, 0.01, 5, 1);
     page->addChild(*param);
 
-    param = defineParam(p_Desc, "fisheye", "Fisheye", "Degree of fisheye distortion", componentScalesGroup, 0, 1, 0, 0, 1);
+    param = defineParam(p_Desc, "fisheye", "Fisheye", "Degree of fisheye distortion", camera1ParamsGroup, 0, 1, 0, 0, 1);
     page->addChild(*param);
+
+	GroupParamDescriptor* blendGroup = p_Desc.defineGroupParam("blendParams");
+	blendGroup->setHint("Blend Camera Parameters");
+	blendGroup->setLabels("Blend Camera Parameters", "Blend Camera Parameters", "Blend Camera Parameters");
+
+	param = defineParam(p_Desc, "blend", "Blend", "Blend Cameras", blendGroup, 0, 1, 0);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "accel", "Blend Acceleration", "Blend Acceleration", blendGroup, 0, 1, 0);
+	page->addChild(*param);
+
+	GroupParamDescriptor* motionblurGroup = p_Desc.defineGroupParam("motionblurParams");
+	blendGroup->setHint("Blend Camera Parameters");
+	blendGroup->setLabels("Motion Blur Parameters", "Motion Blur Parameters", "Motion Blur Parameters");
+
+	param = defineParam(p_Desc, "shutter", "Shutter Angle", "Shutter Angle", motionblurGroup, 0, 1, 0, 0, 3);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "samples", "Samples", "Samples", motionblurGroup, 1, 20, 1, 1, 256);
+	page->addChild(*param);
+
+	GroupParamDescriptor* camera2ParamsGroup = p_Desc.defineGroupParam("camera2Params");
+	camera2ParamsGroup->setHint("Scales on the individual component");
+	camera2ParamsGroup->setLabels("Camera 2 Parameters", "Camera 2 Parameters", "Camera 2 Parameters");
+
+	// Make the camera 2 params
+	param = defineParam(p_Desc, "pitch2", "Pitch", "Up/down camera rotation", camera2ParamsGroup, -1, 1, 0);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "yaw2", "Yaw", "Left/right camera rotation", camera2ParamsGroup, -1, 1, 0);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "fov2", "Field of View", "Camera field of view", camera2ParamsGroup, 0.01, 5, 1);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "fisheye2", "Fisheye", "Degree of fisheye distortion", camera2ParamsGroup, 0, 1, 0, 0, 1);
+	page->addChild(*param);
 }
 
 ImageEffect* GainPluginFactory::createInstance(OfxImageEffectHandle p_Handle, ContextEnum /*p_Context*/)

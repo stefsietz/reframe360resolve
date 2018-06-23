@@ -1,4 +1,4 @@
-﻿Build started 22.06.2018 10:41:36.
+﻿Build started 23.06.2018 17:40:25.
      1>Project "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\GainPlugin.vcxproj" on node 2 (Build target(s)).
      1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120\Microsoft.CppBuild.targets(364,5): warning MSB8004: Output Directory does not end with a trailing slash.  This build instance will add the slash as it is required to allow proper evaluation of the Output Directory.
      1>PreBuildEvent:
@@ -8,10 +8,22 @@
          bla
        ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /Zi /nologo /W3 /WX- /Od /D WIN32 /D _DEBUG /D _WINDOWS /D _USRDLL /D _WINDLL /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc120.pdb" /Gd /TP /errorReport:prompt GoproVRPlugin.cpp OpenCLKernel.cpp
-         OpenCLKernel.cpp
          GoproVRPlugin.cpp
-     1>GoproVRPlugin.cpp(273): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(371): warning C4305: 'argument' : truncation from 'double' to 'float'
+     1>GoproVRPlugin.cpp(348): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(349): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(365): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(367): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(370): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(374): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(383): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(385): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(395): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(396): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(507): warning C4305: 'argument' : truncation from 'double' to 'float'
+     1>GoproVRPlugin.cpp(534): warning C4305: 'argument' : truncation from 'double' to 'float'
+         Generating Code...
+         Compiling...
+         OpenCLKernel.cpp
          Generating Code...
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.dll" /INCREMENTAL /NOLOGO /LIBPATH:"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\lib\x64" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib cuda.lib cudart.lib OpenCL.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.lib" /MACHINE:X64 /DLL x64\Debug\CudaKernel.cu.obj
@@ -36,4 +48,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:01.85
+Time Elapsed 00:00:01.62
