@@ -76,6 +76,27 @@ __device__ float3 fisheyeDir(float3 dir, const float3 r012, const float3 r345, c
 	return fedir;
 }
 
+__device__ float3 tinyPlanetSph(float3 uv) {
+	float3 sph;
+	float2 uvxy;
+	uvxy.x = uv.x;
+	uvxy.y = uv.y;
+
+	float u  =length(uvxy);
+	float alpha = atan2(uv.z, u);
+	
+	uvxy = normalize(uvxy);
+	
+	sph.z = -(2*cos(alpha)-1.0);
+	
+	float2 sphxy = uvxy * sqrt(1.0 - sph.z*sph.z);
+
+	sph.x = sphxy.x;
+	sph.y = sphxy.y;
+	
+	return sph;
+}
+
 __device__ float4 linInterpCol(float2 uv, const float* input, int width, int height){
 	float4 outCol = {0,0,0,0};
 	float i = floor(uv.x);
@@ -105,7 +126,7 @@ __device__ float4 linInterpCol(float2 uv, const float* input, int width, int hei
 }
 
 __global__ void GainAdjustKernel(int p_Width, int p_Height, float* p_Fov, float* p_Fisheye,
-								const float* p_Input, float* p_Output, const float* r, int samples)
+								const float* p_Input, float* p_Output, const float* r, int samples, bool bilinear)
 {
    const int x = blockIdx.x * blockDim.x + threadIdx.x;
    const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -128,15 +149,22 @@ __global__ void GainAdjustKernel(int p_Width, int p_Height, float* p_Fov, float*
 		   dir.y /= aspect;
 		   dir.z = fov;
 
+		   float3 tinyplanet = tinyPlanetSph(dir);
+		   tinyplanet = normalize(tinyplanet);
+
 		   const float3 r012 = {r[i*9+0], r[i*9+1], r[i*9+2]};
 		   const float3 r345 = {r[i*9+3], r[i*9+4], r[i*9+5]};
 		   const float3 r678 = {r[i*9+6], r[i*9+7], r[i*9+8]};
 
+		   tinyplanet = matMul(r012, r345, r678, tinyplanet);
 		   float3 rectdir = matMul(r012, r345, r678, dir);
 
 		   rectdir = normalize(rectdir);
+		   dir = lerp(tinyplanet, fisheyeDir(dir, r012, r345, r678), p_Fisheye[i]);
+		   //dir = lerp(rectdir, fisheyeDir(dir, r012, r345, r678), p_Fisheye[i]);
 
-		   dir = lerp(rectdir, fisheyeDir(dir, r012, r345, r678), p_Fisheye[i]);
+		   //dir = lerp(rectdir, tinyplanet, p_Fisheye[i]);
+
 
 		   float2 iuv = polarCoord(dir);
 		   iuv = repairUv(iuv);
@@ -151,8 +179,13 @@ __global__ void GainAdjustKernel(int p_Width, int p_Height, float* p_Fov, float*
 		   {
 			   const int index_new = ((y_new * p_Width) + x_new) * 4;
 
-			   //float4 interpCol = linInterpCol(iuv, p_Input, p_Width, p_Height);
-			   float4 interpCol = {p_Input[index_new + 0], p_Input[index_new + 1], p_Input[index_new + 2], p_Input[index_new + 3]};
+			   float4 interpCol;
+			   if (bilinear){
+				   interpCol = linInterpCol(iuv, p_Input, p_Width, p_Height);
+			   }
+			   else {
+				   interpCol = { p_Input[index_new + 0], p_Input[index_new + 1], p_Input[index_new + 2], p_Input[index_new + 3] };
+			   }
 
 			   accum_col.x += interpCol.x;
 			   accum_col.y += interpCol.y;
@@ -167,7 +200,7 @@ __global__ void GainAdjustKernel(int p_Width, int p_Height, float* p_Fov, float*
    }
 }
 
-void RunCudaKernel(int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples)
+void RunCudaKernel(int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples, bool p_Bilinear)
 {
     dim3 threads(128, 1, 1);
     dim3 blocks(((p_Width + threads.x - 1) / threads.x), p_Height, 1);
@@ -185,7 +218,7 @@ void RunCudaKernel(int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, co
 	cudaMemcpy((void*)dev_fisheye, (void*)p_Fisheye, sizeof(float)*p_Samples, cudaMemcpyHostToDevice);
 
     GainAdjustKernel<<<blocks, threads>>>(p_Width, p_Height, dev_fov, dev_fisheye,
-											p_Input, p_Output, dev_rmat, p_Samples);
+											p_Input, p_Output, dev_rmat, p_Samples, p_Bilinear);
 	cudaFree( dev_rmat );
 	cudaFree( dev_fov );
 	cudaFree( dev_fisheye );

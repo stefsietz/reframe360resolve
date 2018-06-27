@@ -38,6 +38,18 @@ vec2 polarCoord(vec3 dir) {
 	return uv;
 }
 
+vec3 spherical(vec2 uv) {
+	float phi = atan(uv.y, uv.x);
+	float theta = len(uv);
+	
+	vec3 spherical;
+	spherical.x = sin(theta) * cos(phi);
+	spherical.y = sin(theta) * sin(phi);
+	spherical.z = cos(theta);
+	
+	return spherical;
+}
+
 vec3 fisheyeDir(vec3 dir) {
 
 	dir = dir / dir.z;

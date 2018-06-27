@@ -104,21 +104,20 @@ const char *KernelSource = "\n" \
 "}\n" \
 "\n" \
 "__kernel void GoproVRKernel(\n" \
-"int p_Width,\n" \
-"int p_Height,\n" \
-"float p_Pitch,\n" \
-"float p_Yaw,\n" \
-"float p_Fov,\n" \
-"float p_Fisheye,\n" \
-"float r0, float r1, float r2, float r3, float r4, float r5, float r6, float r7, float r8,\n" \
-"__global const float* p_Input,\n" \
-"__global float* p_Output)\n" \
+"int p_Width, int p_Height, __global float* p_Fov, __global float* p_Fisheye,\n" \
+"__global const float* p_Input, __global float* p_Output, __global float* r, int samples, bool bilinear)\n" \
 "{\n" \
 "const int x = get_global_id(0);\n" \
 "const int y = get_global_id(1);\n" \
 "\n" \
 "if ((x < p_Width) && (y < p_Height)){\n" \
-"float fov = p_Fov;\n" \
+"const int index = ((y * p_Width) + x) * 4;\n" \
+"\n" \
+"float4 accum_col = { 0, 0, 0, 0 };\n" \
+"\n" \
+"for (int i = 0; i < samples; i++){\n" \
+"\n" \
+"float fov = p_Fov[i];\n" \
 "\n" \
 "float2 uv = { (float)x / p_Width, (float)y / p_Height };\n" \
 "float aspect = (float)p_Width / (float)p_Height;\n" \
@@ -129,14 +128,16 @@ const char *KernelSource = "\n" \
 "dir.y /= aspect;\n" \
 "dir.z = fov;\n" \
 "\n" \
-"float16 rotMat = { r0, r1, r2, r3, r4, r5, r6, r7, r8, 0, 0, 0, 0, 0, 0, 0 };\n" \
+"float16 rotMat = { r[i * 9 + 0], r[i * 9 + 1], r[i * 9 + 2],\n" \
+"r[i * 9 + 3], r[i * 9 + 4], r[i * 9 + 5],\n" \
+"r[i * 9 + 6], r[i * 9 + 7], r[i * 9 + 8], 0, 0, 0, 0, 0, 0, 0 };\n" \
 "\n" \
 "float3 rectdir = dir;\n" \
 "rectdir = matMul(rotMat, dir);\n" \
 "\n" \
 "rectdir = normalize(rectdir);\n" \
 "\n" \
-"dir = mix(rectdir, fisheyeDir(dir, rotMat), p_Fisheye);\n" \
+"dir = mix(rectdir, fisheyeDir(dir, rotMat), p_Fisheye[i]);\n" \
 "\n" \
 "float2 iuv = polarCoord(dir);\n" \
 "\n" \
@@ -150,16 +151,26 @@ const char *KernelSource = "\n" \
 "\n" \
 "if ((x_new < p_Width) && (y_new < p_Height))\n" \
 "{\n" \
-"const int index = ((y * p_Width) + x) * 4;\n" \
 "const int index_new = ((y_new * p_Width) + x_new) * 4;\n" \
 "\n" \
-"float4 interpCol = linInterpCol(iuv, p_Input, p_Width, p_Height);\n" \
-"\n" \
-"p_Output[index + 0] = interpCol.x;\n" \
-"p_Output[index + 1] = interpCol.y;\n" \
-"p_Output[index + 2] = interpCol.z;\n" \
-"p_Output[index + 3] = interpCol.w;\n" \
+"float4 interpCol;\n" \
+"if (bilinear){\n" \
+"interpCol = linInterpCol(iuv, p_Input, p_Width, p_Height);\n" \
 "}\n" \
+"else {\n" \
+"interpCol = { p_Input[index_new + 0], p_Input[index_new + 1], p_Input[index_new + 2], p_Input[index_new + 3] };\n" \
+"}\n" \
+"\n" \
+"accum_col.x += interpCol.x;\n" \
+"accum_col.y += interpCol.y;\n" \
+"accum_col.z += interpCol.z;\n" \
+"accum_col.w += interpCol.w;\n" \
+"}\n" \
+"}\n" \
+"p_Output[index + 0] = accum_col.x / samples;\n" \
+"p_Output[index + 1] = accum_col.y / samples;\n" \
+"p_Output[index + 2] = accum_col.z / samples;\n" \
+"p_Output[index + 3] = accum_col.w / samples;\n" \
 "}\n" \
 "}\n" \
 "\n";

@@ -1,7 +1,7 @@
-﻿Build started 23.06.2018 18:19:25.
+﻿Build started 27.06.2018 14:10:08.
      1>Project "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\GainPlugin.vcxproj" on node 2 (Rebuild target(s)).
      1>CudaClean:
-         cmd.exe /C "C:\Users\Stefan\AppData\Local\Temp\tmpea919702e4104981b8731004fb5d0d37.cmd"
+         cmd.exe /C "C:\Users\Stefan\AppData\Local\Temp\tmp7b3b4c06abdb4577a678f124b8a65ba4.cmd"
          "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"     --keep-dir x64\Release -maxrregcount=0  --machine 64 --compile      -DWIN32 -DNDEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /O2 /Zi  /MD " -o x64\Release\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" -clean
          
          C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"     --keep-dir x64\Release -maxrregcount=0  --machine 64 --compile      -DWIN32 -DNDEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /O2 /Zi  /MD " -o x64\Release\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" -clean 
@@ -16,7 +16,7 @@
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\cl.exe /E /nologo /showIncludes /TP /D__CUDACC__ /DWIN32 /DNDEBUG /D_WINDOWS /D_USRDLL /D_WINDLL /D_UNICODE /DUNICODE /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin" /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /I. /FIcuda_runtime.h /c "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" 
        CudaBuild:
          Compiling CUDA source file CudaKernel.cu...
-         cmd.exe /C "C:\Users\Stefan\AppData\Local\Temp\tmp1e7e3aef94fe48e6a7db2fe05e741a43.cmd"
+         cmd.exe /C "C:\Users\Stefan\AppData\Local\Temp\tmpe0eb9caa6c5842dca2219597a6018bbd.cmd"
          "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -gencode=arch=compute_20,code=\"sm_20,compute_20\" --use-local-env --cl-version 2013 -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"     --keep-dir x64\Release -maxrregcount=0  --machine 64 --compile -cudart static     -DWIN32 -DNDEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /O2 /Zi  /MD " -o x64\Release\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu"
          
          C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -gencode=arch=compute_20,code=\"sm_20,compute_20\" --use-local-env --cl-version 2013 -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"     --keep-dir x64\Release -maxrregcount=0  --machine 64 --compile -cudart static     -DWIN32 -DNDEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /O2 /Zi  /MD " -o x64\Release\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" 
@@ -37,20 +37,33 @@
          ofxsProperty.cpp
          ofxsPropertyValidation.cpp
          GoproVRPlugin.cpp
-     1>GoproVRPlugin.cpp(321): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(328): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(334): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(359): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(387): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(389): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(392): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(396): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(405): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(407): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(417): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(418): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(529): warning C4305: 'argument' : truncation from 'double' to 'float'
-     1>GoproVRPlugin.cpp(566): warning C4305: 'argument' : truncation from 'double' to 'float'
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(28): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(31): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(38): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(41): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(109): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(110): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(111): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(112): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(172): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(173): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(186): warning C4244: 'initializing' : conversion from 'float' to 'int', possible loss of data
+     1>GoproVRPlugin.cpp(187): warning C4244: 'initializing' : conversion from 'float' to 'int', possible loss of data
+     1>GoproVRPlugin.cpp(382): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(389): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(395): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(420): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(449): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(451): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(454): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(458): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(467): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(469): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(479): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(480): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(494): warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
+     1>GoproVRPlugin.cpp(627): warning C4305: 'argument' : truncation from 'double' to 'float'
+     1>GoproVRPlugin.cpp(644): warning C4305: 'argument' : truncation from 'double' to 'float'
          OpenCLKernel.cpp
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.dll" /INCREMENTAL:NO /NOLOGO /LIBPATH:"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\lib\x64" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib cuda.lib cudart.lib OpenCL.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.pdb" /SUBSYSTEM:WINDOWS /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.lib" /MACHINE:X64 /DLL x64\Release\CudaKernel.cu.obj
@@ -78,4 +91,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:10.45
+Time Elapsed 00:00:11.06

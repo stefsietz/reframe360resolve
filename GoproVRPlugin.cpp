@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 
+
 #include "ofxsImageEffect.h"
 #include "ofxsMultiThread.h"
 #include "ofxsProcessing.h"
@@ -18,6 +19,12 @@
 #define kSupportsMultiResolution false
 #define kSupportsMultipleClipPARs false
 
+#define M_PI 3.14159265358979323846
+
+///GLM Imports
+
+#include "MathUtil.h"
+
 ////////////////////////////////////////////////////////////////////////////////
 
 class ImageScaler : public OFX::ImageProcessor
@@ -33,7 +40,7 @@ public:
     virtual void multiThreadProcessImages(OfxRectI p_ProcWindow);
 
     void setSrcImg(OFX::Image* p_SrcImg);
-    void setParams(float* p_RotMat, float* p_Fov, float* p_Fisheye, int p_Samples);
+    void setParams(float* p_RotMat, float* p_Fov, float* p_Fisheye, int p_Samples, bool p_Bilinear);
 
 private:
     OFX::Image* _srcImg;
@@ -41,6 +48,7 @@ private:
 	float* _fov;
 	float* _fisheye;
 	int _samples;
+	bool _bilinear;
 };
 
 ImageScaler::ImageScaler(OFX::ImageEffect& p_Instance)
@@ -84,7 +92,7 @@ void matMul(const float* y, const float* p, float** outmat){
 	(*outmat)[8] = p[3] * y[6] + p[5] * y[7] + p[8] * y[8];
 }
 
-extern void RunCudaKernel(int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples);
+extern void RunCudaKernel(int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples, bool p_Bilinear);
 
 void ImageScaler::processImagesCUDA()
 {
@@ -95,7 +103,7 @@ void ImageScaler::processImagesCUDA()
     float* input = static_cast<float*>(_srcImg->getPixelData());
     float* output = static_cast<float*>(_dstImg->getPixelData());
 
-	RunCudaKernel(width, height, _fov, _fisheye, input, output, _rotMat, _samples);
+	RunCudaKernel(width, height, _fov, _fisheye, input, output, _rotMat, _samples, _bilinear);
 }
 
 #if defined(__APPLE__)
@@ -114,63 +122,113 @@ void ImageScaler::processImagesMetal()
 }
 #endif
 
-extern void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Gain, const float* p_Input, float* p_Output, float* p_Rotmat);
+extern void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, float* p_RotMat, int p_Samples, bool p_Bilinear);
 
 void ImageScaler::processImagesOpenCL()
 {
-    /*const OfxRectI& bounds = _srcImg->getBounds();
+    const OfxRectI& bounds = _srcImg->getBounds();
     const int width = bounds.x2 - bounds.x1;
     const int height = bounds.y2 - bounds.y1;
 
     float* input = static_cast<float*>(_srcImg->getPixelData());
 	float* output = static_cast<float*>(_dstImg->getPixelData());
 
-	float* pitchMat = (float*)calloc(9, sizeof(float));
-	pitchMatrix(-_params[0], &pitchMat);
-	float* yawMat = (float*)calloc(9, sizeof(float));
-	yawMatrix(_params[1], &yawMat);
-	float* rotMat = (float*)calloc(9, sizeof(float));
-	matMul(yawMat, pitchMat, &rotMat);
-
-    RunOpenCLKernel(_pOpenCLCmdQ, width, height, _params, input, output, rotMat);
-	free(pitchMat);
-	free(yawMat);
-	free(rotMat);*/
+	RunOpenCLKernel(_pOpenCLCmdQ, width, height, _fov, _fisheye, input, output, _rotMat, _samples, _bilinear);
 }
 
 void ImageScaler::multiThreadProcessImages(OfxRectI p_ProcWindow)
 {
-    for (int y = p_ProcWindow.y1; y < p_ProcWindow.y2; ++y)
-    {
-        if (_effect.abort()) break;
+	int width = p_ProcWindow.x2 - p_ProcWindow.x1;
+	int height = p_ProcWindow.y2 - p_ProcWindow.y1;
 
-        float* dstPix = static_cast<float*>(_dstImg->getPixelAddress(p_ProcWindow.x1, y));
+	for (int i = 0; i < _samples; i++)
+	{
 
-        for (int x = p_ProcWindow.x1; x < p_ProcWindow.x2; ++x)
-        {
-            float* srcPix = static_cast<float*>(_srcImg ? _srcImg->getPixelAddress(x, y) : 0);
+		mat3 rotMat;
+		rotMat[0][0] = _rotMat[i * 9 + 0];
+		rotMat[0][1] = _rotMat[i * 9 + 1];
+		rotMat[0][2] = _rotMat[i * 9 + 2];
+		rotMat[1][0] = _rotMat[i * 9 + 3];
+		rotMat[1][1] = _rotMat[i * 9 + 4];
+		rotMat[1][2] = _rotMat[i * 9 + 5];
+		rotMat[2][0] = _rotMat[i * 9 + 6];
+		rotMat[2][1] = _rotMat[i * 9 + 7];
+		rotMat[2][2] = _rotMat[i * 9 + 8];
 
-            // do we have a source image to scale up
-            if (srcPix)
-            {
-                for(int c = 0; c < 4; ++c)
-                {
-                    dstPix[c] = srcPix[c] * _samples;
-                }
-            }
-            else
-            {
-                // no src pixel here, be black and transparent
-                for (int c = 0; c < 4; ++c)
-                {
-                    dstPix[c] = 0;
-                }
-            }
+		float fov = _fov[i];
+		float aspect = (float)width / (float)height;
 
-            // increment the dst pixel
-            dstPix += 4;
-        }
-    }
+		for (int y = p_ProcWindow.y1; y < p_ProcWindow.y2; ++y)
+		{
+			if (_effect.abort()) break;
+
+			float* dstPix = static_cast<float*>(_dstImg->getPixelAddress(p_ProcWindow.x1, y));
+
+			for (int x = p_ProcWindow.x1; x < p_ProcWindow.x2; ++x)
+			{
+				vec2 uv = { (float)x / width, (float)y / height };
+
+				vec3 dir = { 0, 0, 0 };
+				dir.x = (uv.x - 0.5)*2.0;
+				dir.y = (uv.y - 0.5)*2.0;
+				dir.y /= aspect;
+				dir.z = fov;
+
+				vec3 rectdir = rotMat * dir;
+
+				rectdir = normalize(rectdir);
+
+				dir = mix(rectdir, fisheyeDir(dir, rotMat), _fisheye[i]);
+
+				vec2 iuv = polarCoord(dir);
+				iuv = repairUv(iuv);
+
+				int x_new = p_ProcWindow.x1 + iuv.x * (width - 1);
+				int y_new = p_ProcWindow.y1 + iuv.y * (height - 1);
+
+				iuv.x *= (width - 1);
+				iuv.y *= (height - 1);
+
+				if ((x_new < width) && (y_new < height))
+				{
+					float* srcPix = static_cast<float*>(_srcImg ? _srcImg->getPixelAddress(x_new, y_new) : 0);
+					vec4 interpCol;
+
+					// do we have a source image to scale up
+					if (srcPix)
+					{
+						if (_bilinear){
+							interpCol = linInterpCol(iuv, _srcImg, p_ProcWindow, width, height);
+						}
+						else {
+							interpCol = { srcPix[0], srcPix[1], srcPix[2], srcPix[3] };
+						}
+					}
+					else
+					{
+						interpCol = { 0, 0, 0, 1.0 };
+					}
+
+					if (i == 0) {
+						dstPix[0] = 0;
+						dstPix[1] = 0;
+						dstPix[2] = 0;
+						dstPix[3] = 0;
+					}
+
+					dstPix[0] += interpCol.x / _samples;
+					dstPix[1] += interpCol.y / _samples;
+					dstPix[2] += interpCol.z / _samples;
+					dstPix[3] += interpCol.w / _samples;
+				}
+
+				// increment the dst pixel
+				dstPix += 4;
+
+				continue;
+			}
+		}
+	}
 }
 
 void ImageScaler::setSrcImg(OFX::Image* p_SrcImg)
@@ -178,12 +236,13 @@ void ImageScaler::setSrcImg(OFX::Image* p_SrcImg)
     _srcImg = p_SrcImg;
 }
 
-void ImageScaler::setParams(float* p_RotMat, float* p_Fov, float* p_Fisheye, int p_Samples)
+void ImageScaler::setParams(float* p_RotMat, float* p_Fov, float* p_Fisheye, int p_Samples, bool p_Bilinear)
 {
 	_rotMat = p_RotMat;
 	_fov = p_Fov;
     _fisheye = p_Fisheye;
     _samples = p_Samples;
+	_bilinear = p_Bilinear;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,7 +284,8 @@ private:
 	OFX::DoubleParam* m_Accel;
 
 	OFX::DoubleParam* m_Shutter;
-	OFX::DoubleParam* m_Samples;
+	OFX::IntParam* m_Samples;
+	OFX::BooleanParam* m_Bilinear;
 
 	OFX::DoubleParam* m_Pitch2;
 	OFX::DoubleParam* m_Yaw2;
@@ -239,7 +299,7 @@ GainPlugin::GainPlugin(OfxImageEffectHandle p_Handle)
     m_DstClip = fetchClip(kOfxImageEffectOutputClipName);
     m_SrcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
 
-	m_Pitch = fetchDoubleParam("pitch");
+	m_Pitch =  fetchDoubleParam("pitch");
     m_Yaw = fetchDoubleParam("yaw");
     m_Fov = fetchDoubleParam("fov");
     m_Fisheye = fetchDoubleParam("fisheye");
@@ -248,7 +308,8 @@ GainPlugin::GainPlugin(OfxImageEffectHandle p_Handle)
 	m_Accel = fetchDoubleParam("accel");
 
 	m_Shutter = fetchDoubleParam("shutter");
-	m_Samples = fetchDoubleParam("samples");
+	m_Samples = fetchIntParam("samples");
+	m_Bilinear = fetchBooleanParam("bilinear");
 
 	m_Pitch2 = fetchDoubleParam("pitch2");
 	m_Yaw2 = fetchDoubleParam("yaw2");
@@ -357,6 +418,7 @@ void GainPlugin::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 
 	int mb_samples = (int)m_Samples->getValueAtTime(p_Args.time);
 	float mb_shutter = m_Shutter->getValueAtTime(p_Args.time) * 0.5;
+	int bilinear = m_Bilinear->getValueAtTime(p_Args.time);
 
 	float* fovs = (float*)malloc(sizeof(float)*mb_samples);
 	float* fisheyes = (float*)malloc(sizeof(float)*mb_samples);
@@ -402,9 +464,9 @@ void GainPlugin::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 		fisheye = fisheye * (1.0 - blend) + fisheye2 * blend;
 
 		float* pitchMat = (float*)calloc(9, sizeof(float));
-		pitchMatrix(-pitch, &pitchMat);
+		pitchMatrix(-pitch / 180 * M_PI, &pitchMat);
 		float* yawMat = (float*)calloc(9, sizeof(float));
-		yawMatrix(yaw, &yawMat);
+		yawMatrix(yaw / 180 * M_PI, &yawMat);
 		float* rotMat = (float*)calloc(9, sizeof(float));
 		matMul(yawMat, pitchMat, &rotMat);
 
@@ -429,7 +491,7 @@ void GainPlugin::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
     p_ImageScaler.setRenderWindow(p_Args.renderWindow);
 
     // Set the scales
-	p_ImageScaler.setParams(rotmats, fovs, fisheyes, mb_samples);
+	p_ImageScaler.setParams(rotmats, fovs, fisheyes, mb_samples, bilinear);
 
     // Call the base class process member, this will call the derived templated process code
     p_ImageScaler.process();
@@ -494,6 +556,42 @@ static DoubleParamDescriptor* defineParam(OFX::ImageEffectDescriptor& p_Desc, co
     return param;
 }
 
+static IntParamDescriptor* defineIntParam(OFX::ImageEffectDescriptor& p_Desc, const std::string& p_Name, const std::string& p_Label,
+	const std::string& p_Hint, GroupParamDescriptor* p_Parent, int min, int max, int default, int hardmin = INT_MIN, int hardmax = INT_MAX)
+{
+	IntParamDescriptor* param = p_Desc.defineIntParam(p_Name);
+	param->setLabels(p_Label, p_Label, p_Label);
+	param->setScriptName(p_Name);
+	param->setHint(p_Hint);
+	param->setDefault(default);
+	param->setRange(hardmin, hardmax);
+	param->setDisplayRange(min, max);
+
+	if (p_Parent)
+	{
+		param->setParent(*p_Parent);
+	}
+
+	return param;
+}
+
+static BooleanParamDescriptor* defineBooleanParam(OFX::ImageEffectDescriptor& p_Desc, const std::string& p_Name, const std::string& p_Label,
+	const std::string& p_Hint, GroupParamDescriptor* p_Parent, bool default)
+{
+	BooleanParamDescriptor* param = p_Desc.defineBooleanParam(p_Name);
+	param->setLabels(p_Label, p_Label, p_Label);
+	param->setScriptName(p_Name);
+	param->setHint(p_Hint);
+	param->setDefault(default);
+
+	if (p_Parent)
+	{
+		param->setParent(*p_Parent);
+	}
+
+	return param;
+}
+
 
 void GainPluginFactory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OFX::ContextEnum /*p_Context*/)
 {
@@ -520,17 +618,34 @@ void GainPluginFactory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
 
 
     // Make the camera 1 params
-	DoubleParamDescriptor* param = defineParam(p_Desc, "pitch", "Pitch", "Up/down camera rotation", camera1ParamsGroup, -1, 1, 0);
+	DoubleParamDescriptor* param = defineParam(p_Desc, "pitch", "Pitch", "Up/down camera rotation", camera1ParamsGroup, -90, 90, 0);
     page->addChild(*param);
 
-    param = defineParam(p_Desc, "yaw", "Yaw", "Left/right camera rotation", camera1ParamsGroup, -1, 1, 0);
+    param = defineParam(p_Desc, "yaw", "Yaw", "Left/right camera rotation", camera1ParamsGroup, -180, 180, 0);
     page->addChild(*param);
 
-    param = defineParam(p_Desc, "fov", "Field of View", "Camera field of view", camera1ParamsGroup, 0.01, 5, 1);
+    param = defineParam(p_Desc, "fov", "Field of View", "Camera field of view", camera1ParamsGroup, 0.15, 5, 1);
     page->addChild(*param);
 
     param = defineParam(p_Desc, "fisheye", "Fisheye", "Degree of fisheye distortion", camera1ParamsGroup, 0, 1, 0, 0, 1);
     page->addChild(*param);
+
+	GroupParamDescriptor* camera2ParamsGroup = p_Desc.defineGroupParam("camera2Params");
+	camera2ParamsGroup->setHint("Scales on the individual component");
+	camera2ParamsGroup->setLabels("Camera 2 Parameters", "Camera 2 Parameters", "Camera 2 Parameters");
+
+	// Make the camera 2 params
+	param = defineParam(p_Desc, "pitch2", "Pitch", "Up/down camera rotation", camera2ParamsGroup, -90, 90, 0);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "yaw2", "Yaw", "Left/right camera rotation", camera2ParamsGroup, -180, 180, 0);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "fov2", "Field of View", "Camera field of view", camera2ParamsGroup, 0.15, 5, 1);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "fisheye2", "Fisheye", "Degree of fisheye distortion", camera2ParamsGroup, 0, 1, 0, 0, 1);
+	page->addChild(*param);
 
 	GroupParamDescriptor* blendGroup = p_Desc.defineGroupParam("blendParams");
 	blendGroup->setHint("Blend Camera Parameters");
@@ -549,25 +664,11 @@ void GainPluginFactory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
 	param = defineParam(p_Desc, "shutter", "Shutter Angle", "Shutter Angle", motionblurGroup, 0, 1, 0, 0, 3);
 	page->addChild(*param);
 
-	param = defineParam(p_Desc, "samples", "Samples", "Samples", motionblurGroup, 1, 20, 1, 1, 256);
-	page->addChild(*param);
+	IntParamDescriptor* intParam = defineIntParam(p_Desc, "samples", "Samples", "Samples", motionblurGroup, 1, 20, 1, 1, 256);
+	page->addChild(*intParam);
 
-	GroupParamDescriptor* camera2ParamsGroup = p_Desc.defineGroupParam("camera2Params");
-	camera2ParamsGroup->setHint("Scales on the individual component");
-	camera2ParamsGroup->setLabels("Camera 2 Parameters", "Camera 2 Parameters", "Camera 2 Parameters");
-
-	// Make the camera 2 params
-	param = defineParam(p_Desc, "pitch2", "Pitch", "Up/down camera rotation", camera2ParamsGroup, -1, 1, 0);
-	page->addChild(*param);
-
-	param = defineParam(p_Desc, "yaw2", "Yaw", "Left/right camera rotation", camera2ParamsGroup, -1, 1, 0);
-	page->addChild(*param);
-
-	param = defineParam(p_Desc, "fov2", "Field of View", "Camera field of view", camera2ParamsGroup, 0.01, 5, 1);
-	page->addChild(*param);
-
-	param = defineParam(p_Desc, "fisheye2", "Fisheye", "Degree of fisheye distortion", camera2ParamsGroup, 0, 1, 0, 0, 1);
-	page->addChild(*param);
+	BooleanParamDescriptor* bilinearParam = defineBooleanParam(p_Desc, "bilinear", "Bilinear Filtering", "Bilinear Filtering", motionblurGroup, true);
+	page->addChild(*bilinearParam);
 }
 
 ImageEffect* GainPluginFactory::createInstance(OfxImageEffectHandle p_Handle, ContextEnum /*p_Context*/)

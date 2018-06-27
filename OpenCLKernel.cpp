@@ -78,7 +78,7 @@ static HMODULE GetThisDllHandle()
 	return len ? (HMODULE)info.AllocationBase : NULL;
 }
 
-void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples)
+void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, float* p_RotMat, int p_Samples, bool p_Bilinear)
 {
     cl_int error;
 
@@ -109,12 +109,11 @@ void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, floa
 
     // find the program kernel corresponding to the command queue
     cl_kernel kernel;
+	cl_context clContext = NULL;
+	error = clGetCommandQueueInfo(cmdQ, CL_QUEUE_CONTEXT, sizeof(cl_context), &clContext, NULL);
+	CheckError(error, "Unable to get the context");
     if (kernelMap.find(cmdQ) == kernelMap.end())
 	{
-		cl_context clContext = NULL;
-		error = clGetCommandQueueInfo(cmdQ, CL_QUEUE_CONTEXT, sizeof(cl_context), &clContext, NULL);
-        CheckError(error, "Unable to get the context");
-
 		cl_program program = clCreateProgramWithSource(clContext, 1, (const char**)&KernelSource, NULL, &error);
         CheckError(error, "Unable to create program");
 
@@ -135,34 +134,22 @@ void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, floa
 
     locker.Unlock();
     int count = 0;
-	/*
-	kernel.setArg(count++, sizeof(int), &p_Width);
-	kernel.setArg(count++, sizeof(int), &p_Height);
-	kernel.setArg(count++, sizeof(float), &p_Params[0]);
-	kernel.setArg(count++, sizeof(float), &p_Params[1]);
-	kernel.setArg(count++, sizeof(float), &p_Params[2]);
-	kernel.setArg(count++, sizeof(float), &p_Params[3]);
-	kernel.setArg(count++, sizeof(cl_mem), &p_Input);
-	kernel.setArg(count++, sizeof(cl_mem), &p_Output);*/
 
     error  = clSetKernelArg(kernel, count++, sizeof(int), &p_Width);
-    error |= clSetKernelArg(kernel, count++, sizeof(int), &p_Height); 
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Params[0]);
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Params[1]);
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Params[2]);
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Params[3]);
+	error |= clSetKernelArg(kernel, count++, sizeof(int), &p_Height);
 
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[0]);
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[1]);
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[2]);
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[3]);
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[4]);
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[5]);
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[6]);
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[7]);
-	error |= clSetKernelArg(kernel, count++, sizeof(float), &p_Rotmat[8]);
+	cl_mem fov_buf = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float)*p_Samples, p_Fov, &error);
+	cl_mem fisheye_buf = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float)*p_Samples, p_Fisheye, &error);
+	error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &fov_buf);
+	error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &fisheye_buf);
+
     error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &p_Input);
     error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &p_Output);
+
+	cl_mem rotmat_buf = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float)*9*p_Samples, p_RotMat, &error);
+	error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &rotmat_buf);
+	error |= clSetKernelArg(kernel, count++, sizeof(int), &p_Samples);
+	error |= clSetKernelArg(kernel, count++, sizeof(bool), &p_Bilinear);
 
     CheckError(error, "Unable to set kernel arguments");
 
@@ -172,14 +159,11 @@ void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, floa
     globalWorkSize[0] = ((p_Width + localWorkSize[0] - 1) / localWorkSize[0]) * localWorkSize[0];
     globalWorkSize[1] = p_Height;
 
-    clEnqueueNDRangeKernel(cmdQ, kernel, 2, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
+	cl_event clEvent;
+    clEnqueueNDRangeKernel(cmdQ, kernel, 2, NULL, globalWorkSize, localWorkSize, 0, NULL, &clEvent);
 
-	//cl::CommandQueue queue(cmdQ);
-
-	/*queue.enqueueNDRangeKernel(
-		kernel,
-		cl::NullRange,
-		cl::NDRange(p_Width, p_Height),
-		cl::NullRange
-		);*/
+	clWaitForEvents(1, &clEvent);
+	clReleaseMemObject(fov_buf);
+	clReleaseMemObject(fisheye_buf);
+	clReleaseMemObject(rotmat_buf);
 }

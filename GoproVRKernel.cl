@@ -103,61 +103,72 @@ float4 linInterpCol(float2 uv, __global const float* input, int width, int heigh
 }
 
 __kernel void GoproVRKernel(                                       
-   int p_Width,                                                       
-   int p_Height,                                                      
-   float p_Pitch,                                                    
-   float p_Yaw,                                                  
-   float p_Fov,                                                   
-   float p_Fisheye,  
-   float r0, float r1, float r2, float r3, float r4, float r5, float r6, float r7, float r8,
-   __global const float* p_Input,                                     
-   __global float* p_Output)
+	int p_Width, int p_Height, __global float* p_Fov, __global float* p_Fisheye,
+	__global const float* p_Input, __global float* p_Output, __global float* r, int samples, bool bilinear)
 {                                                                      
    const int x = get_global_id(0);                                  
    const int y = get_global_id(1);
 
    if ((x < p_Width) && (y < p_Height)){
-	   float fov = p_Fov;
+	   const int index = ((y * p_Width) + x) * 4;
 
-	   float2 uv = { (float)x / p_Width, (float)y / p_Height };
-	   float aspect = (float)p_Width / (float)p_Height;
+	   float4 accum_col = { 0, 0, 0, 0 };
 
-	   float3 dir = { 0, 0, 0 };
-	   dir.x = (uv.x - 0.5)*2.0;
-	   dir.y = (uv.y - 0.5)*2.0;
-	   dir.y /= aspect;
-	   dir.z = fov;
+	   for (int i = 0; i < samples; i++){
 
-	   float16 rotMat = { r0, r1, r2, r3, r4, r5, r6, r7, r8, 0, 0, 0, 0, 0, 0, 0 };
+		   float fov = p_Fov[i];
 
-	   float3 rectdir = dir;
-	   rectdir = matMul(rotMat, dir);
+		   float2 uv = { (float)x / p_Width, (float)y / p_Height };
+		   float aspect = (float)p_Width / (float)p_Height;
 
-	   rectdir = normalize(rectdir);
+		   float3 dir = { 0, 0, 0 };
+		   dir.x = (uv.x - 0.5)*2.0;
+		   dir.y = (uv.y - 0.5)*2.0;
+		   dir.y /= aspect;
+		   dir.z = fov;
 
-	   dir = mix(rectdir, fisheyeDir(dir, rotMat), p_Fisheye);
+		   float16 rotMat = { r[i * 9 + 0], r[i * 9 + 1], r[i * 9 + 2],
+			   r[i * 9 + 3], r[i * 9 + 4], r[i * 9 + 5],
+			   r[i * 9 + 6], r[i * 9 + 7], r[i * 9 + 8], 0, 0, 0, 0, 0, 0, 0 };
 
-	   float2 iuv = polarCoord(dir);
+		   float3 rectdir = dir;
+		   rectdir = matMul(rotMat, dir);
 
-	   iuv = repairUv(iuv);
+		   rectdir = normalize(rectdir);
 
-	   int x_new = iuv.x * (p_Width - 1);
-	   int y_new = iuv.y * (p_Height - 1);
+		   dir = mix(rectdir, fisheyeDir(dir, rotMat), p_Fisheye[i]);
 
-	   iuv.x *= (p_Width - 1);
-	   iuv.y *= (p_Height - 1);
+		   float2 iuv = polarCoord(dir);
 
-	   if ((x_new < p_Width) && (y_new < p_Height))
-	   {
-		   const int index = ((y * p_Width) + x) * 4;
-		   const int index_new = ((y_new * p_Width) + x_new) * 4;
+		   iuv = repairUv(iuv);
 
-		   float4 interpCol = linInterpCol(iuv, p_Input, p_Width, p_Height);
+		   int x_new = iuv.x * (p_Width - 1);
+		   int y_new = iuv.y * (p_Height - 1);
 
-		   p_Output[index + 0] = interpCol.x;
-		   p_Output[index + 1] = interpCol.y;
-		   p_Output[index + 2] = interpCol.z;
-		   p_Output[index + 3] = interpCol.w;
+		   iuv.x *= (p_Width - 1);
+		   iuv.y *= (p_Height - 1);
+
+		   if ((x_new < p_Width) && (y_new < p_Height))
+		   {
+			   const int index_new = ((y_new * p_Width) + x_new) * 4;
+
+			   float4 interpCol;
+			   if (bilinear){
+				   interpCol = linInterpCol(iuv, p_Input, p_Width, p_Height);
+			   }
+			   else {
+				   interpCol = { p_Input[index_new + 0], p_Input[index_new + 1], p_Input[index_new + 2], p_Input[index_new + 3] };
+			   }
+
+			   accum_col.x += interpCol.x;
+			   accum_col.y += interpCol.y;
+			   accum_col.z += interpCol.z;
+			   accum_col.w += interpCol.w;
+		   }
 	   }
+	   p_Output[index + 0] = accum_col.x / samples;
+	   p_Output[index + 1] = accum_col.y / samples;
+	   p_Output[index + 2] = accum_col.z / samples;
+	   p_Output[index + 3] = accum_col.w / samples;
    }
 }
