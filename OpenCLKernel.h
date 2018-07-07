@@ -134,7 +134,7 @@ const char *KernelSource = "\n" \
 "return outCol;\n" \
 "}\n" \
 "\n" \
-"__kernel void GoproVRKernel(\n" \
+"__kernel void Reframe360Kernel(\n" \
 "int p_Width, int p_Height, __global float* p_Fov, __global float* p_Tinyplanet, __global float* p_Rectilinear,\n" \
 "__global const float* p_Input, __global float* p_Output, __global float* r, int samples, int bilinear)\n" \
 "{\n" \

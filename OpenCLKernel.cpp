@@ -137,7 +137,7 @@ void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, floa
 			printf("%s\n", log);
 		}
 
-        kernel = clCreateKernel(program, "GoproVRKernel", &error);
+        kernel = clCreateKernel(program, "Reframe360Kernel", &error);
         CheckError(error, "Unable to create kernel");
 
         kernelMap[cmdQ] = kernel;
