@@ -90,7 +90,31 @@ static vec3 fisheyeDir(vec3 dir, const mat3 rotMat) {
 	return fedir;
 }
 
-vec4 linInterpCol(vec2 uv, OFX::Image *image, OfxRectI procWindow, int width, int height){
+vec3 tinyPlanetSph(vec3 uv) {
+	vec3 sph;
+	vec2 uvxy;
+	uvxy.x = uv.x / uv.z;
+	uvxy.y = uv.y / uv.z;
+
+	float u = length(uvxy);
+	float alpha = atan2(2.0f, u);
+	float phi = M_PI - 2 * alpha;
+	float z = cos(phi);
+	float x = sin(phi);
+
+	uvxy = normalize(uvxy);
+
+	sph.z = z;
+
+	vec2 sphxy = uvxy * x;
+
+	sph.x = sphxy.x;
+	sph.y = sphxy.y;
+
+	return sph;
+}
+
+inline vec4 linInterpCol(vec2 uv, OFX::Image *image, OfxRectI procWindow, int width, int height){
 	vec4 outCol = { 0, 0, 0, 0 };
 	float i = floor(uv.x);
 	float j = floor(uv.y);
@@ -98,10 +122,12 @@ vec4 linInterpCol(vec2 uv, OFX::Image *image, OfxRectI procWindow, int width, in
 	float b = uv.y - j;
 	int x = procWindow.x1 + (int)i;
 	int y = procWindow.y1 + (int)j;
+	int x1 = (x < width - 1 ? x + 1 : x);
+	int y1 = (y < width - 1 ? y + 1 : y);
 	float* indexX1Y1 = static_cast<float*>(image->getPixelAddress(x, y));
-	float* indexX2Y1 = static_cast<float*>(image->getPixelAddress(x + 1, y));
-	float* indexX1Y2 = static_cast<float*>(image->getPixelAddress(x, y + 1));
-	float* indexX2Y2 = static_cast<float*>(image->getPixelAddress(x + 1, y + 1));
+	float* indexX2Y1 = static_cast<float*>(image->getPixelAddress(x1, y));
+	float* indexX1Y2 = static_cast<float*>(image->getPixelAddress(x, y1));
+	float* indexX2Y2 = static_cast<float*>(image->getPixelAddress(x1, y1));
 
 	const int maxIndex = (width * height - 1) * 4;
 
@@ -119,4 +145,9 @@ vec4 linInterpCol(vec2 uv, OFX::Image *image, OfxRectI procWindow, int width, in
 	}
 
 	return outCol;
+}
+
+static float fitRange(float value, float in_min, float in_max, float out_min, float out_max){
+	float out = out_min + ((out_max - out_min) / (in_max - in_min)) * (value - in_min);
+	return std::min(out_max, std::max(out, out_min));
 }

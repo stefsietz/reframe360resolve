@@ -78,7 +78,7 @@ static HMODULE GetThisDllHandle()
 	return len ? (HMODULE)info.AllocationBase : NULL;
 }
 
-void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, float* p_RotMat, int p_Samples, bool p_Bilinear)
+void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, float* p_Tinyplanet, float* p_Rectilinear, const float* p_Input, float* p_Output, float* p_RotMat, int p_Samples, bool p_Bilinear)
 {
     cl_int error;
 
@@ -118,7 +118,24 @@ void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, floa
         CheckError(error, "Unable to create program");
 
         error = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
-        CheckError(error, "Unable to build program");
+		CheckError(error, "Unable to build program");
+
+		if (error == CL_BUILD_PROGRAM_FAILURE) {
+			// Determine the size of the log
+			size_t log_size;
+			clGetProgramBuildInfo(program, deviceId, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+
+			// Allocate memory for the log
+			char *log = (char *)malloc(log_size);
+
+			// Get the log
+			clGetProgramBuildInfo(program, deviceId, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+
+			std::string log_str(log);
+
+			// Print the log
+			printf("%s\n", log);
+		}
 
         kernel = clCreateKernel(program, "GoproVRKernel", &error);
         CheckError(error, "Unable to create kernel");
@@ -131,6 +148,7 @@ void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, floa
         kernel = kernelMap[cmdQ];
     }
 
+	int bilinear(p_Bilinear ? 1 : 0);
 
     locker.Unlock();
     int count = 0;
@@ -139,9 +157,11 @@ void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, floa
 	error |= clSetKernelArg(kernel, count++, sizeof(int), &p_Height);
 
 	cl_mem fov_buf = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float)*p_Samples, p_Fov, &error);
-	cl_mem fisheye_buf = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float)*p_Samples, p_Fisheye, &error);
+	cl_mem tinyplanet_buf = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float)*p_Samples, p_Tinyplanet, &error);
+	cl_mem rectilinear_buf = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float)*p_Samples, p_Rectilinear, &error);
 	error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &fov_buf);
-	error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &fisheye_buf);
+	error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &tinyplanet_buf);
+	error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &rectilinear_buf);
 
     error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &p_Input);
     error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &p_Output);
@@ -149,7 +169,7 @@ void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, floa
 	cl_mem rotmat_buf = clCreateBuffer(clContext, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(float)*9*p_Samples, p_RotMat, &error);
 	error |= clSetKernelArg(kernel, count++, sizeof(cl_mem), &rotmat_buf);
 	error |= clSetKernelArg(kernel, count++, sizeof(int), &p_Samples);
-	error |= clSetKernelArg(kernel, count++, sizeof(bool), &p_Bilinear);
+	error |= clSetKernelArg(kernel, count++, sizeof(int), &bilinear);
 
     CheckError(error, "Unable to set kernel arguments");
 
@@ -164,6 +184,7 @@ void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, floa
 
 	clWaitForEvents(1, &clEvent);
 	clReleaseMemObject(fov_buf);
-	clReleaseMemObject(fisheye_buf);
+	clReleaseMemObject(tinyplanet_buf);
+	clReleaseMemObject(rectilinear_buf);
 	clReleaseMemObject(rotmat_buf);
 }

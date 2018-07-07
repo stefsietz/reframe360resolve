@@ -2,7 +2,7 @@ const char *KernelSource = "\n" \
 "#define PI 3.1415926535897932384626433832795\n" \
 "\n" \
 "float3 matMul(float16 rotMat, float3 invec){\n" \
-"float3 outvec = { 0, 0, 0 };\n" \
+"float3 outvec;\n" \
 "outvec.x = dot(rotMat.s012, invec);\n" \
 "outvec.y = dot(rotMat.s345, invec);\n" \
 "outvec.z = dot(rotMat.s678, invec);\n" \
@@ -11,21 +11,25 @@ const char *KernelSource = "\n" \
 "\n" \
 "\n" \
 "float2 repairUv(float2 uv){\n" \
-"float2 outuv = {0, 0};\n" \
+"float2 outuv = { 0, 0 };\n" \
 "\n" \
-"if(uv.x<0) {\n" \
+"if (uv.x<0) {\n" \
 "outuv.x = 1.0 + uv.x;\n" \
-"}else if(uv.x > 1.0){\n" \
-"outuv.x = uv.x -1.0;\n" \
-"} else {\n" \
+"}\n" \
+"else if (uv.x > 1.0){\n" \
+"outuv.x = uv.x - 1.0;\n" \
+"}\n" \
+"else {\n" \
 "outuv.x = uv.x;\n" \
 "}\n" \
 "\n" \
-"if(uv.y<0) {\n" \
+"if (uv.y<0) {\n" \
 "outuv.y = 1.0 + uv.y;\n" \
-"} else if(uv.y > 1.0){\n" \
-"outuv.y = uv.y -1.0;\n" \
-"} else {\n" \
+"}\n" \
+"else if (uv.y > 1.0){\n" \
+"outuv.y = uv.y - 1.0;\n" \
+"}\n" \
+"else {\n" \
 "outuv.y = uv.y;\n" \
 "}\n" \
 "\n" \
@@ -42,10 +46,10 @@ const char *KernelSource = "\n" \
 "uv.x = longi;\n" \
 "uv.y = lat;\n" \
 "\n" \
-"float2 pitwo = {PI, PI};\n" \
+"float2 pitwo = { PI, PI };\n" \
 "uv /= pitwo;\n" \
 "uv.x /= 2.0;\n" \
-"float2 ones = {1.0, 1.0};\n" \
+"float2 ones = { 1.0, 1.0 };\n" \
 "uv = fmod(uv, ones);\n" \
 "return uv;\n" \
 "}\n" \
@@ -75,37 +79,64 @@ const char *KernelSource = "\n" \
 "return fedir;\n" \
 "}\n" \
 "\n" \
+"float3 tinyPlanetSph(float3 uv) {\n" \
+"float3 sph;\n" \
+"float2 uvxy;\n" \
+"uvxy.x = uv.x / uv.z;\n" \
+"uvxy.y = uv.y / uv.z;\n" \
+"\n" \
+"float u = length(uvxy);\n" \
+"float alpha = atan2(2.0f, u);\n" \
+"float phi = PI - 2 * alpha;\n" \
+"float z = cos(phi);\n" \
+"float x = sin(phi);\n" \
+"\n" \
+"uvxy = normalize(uvxy);\n" \
+"\n" \
+"sph.z = z;\n" \
+"\n" \
+"float2 sphxy;\n" \
+"sphxy.x = uvxy.x * x;\n" \
+"sphxy.y = uvxy.y * x;\n" \
+"\n" \
+"sph.x = sphxy.x;\n" \
+"sph.y = sphxy.y;\n" \
+"\n" \
+"return sph;\n" \
+"}\n" \
+"\n" \
 "float4 linInterpCol(float2 uv, __global const float* input, int width, int height){\n" \
-"float4 outCol = {0,0,0,0};\n" \
+"float4 outCol;\n" \
 "float i = floor(uv.x);\n" \
 "float j = floor(uv.y);\n" \
-"float a = uv.x-i;\n" \
-"float b = uv.y-j;\n" \
+"float a = uv.x - i;\n" \
+"float b = uv.y - j;\n" \
 "int x = (int)i;\n" \
 "int y = (int)j;\n" \
 "const int indexX1Y1 = ((y * width) + x) * 4;\n" \
-"const int indexX2Y1 = ((y * width) + x+1) * 4;\n" \
-"const int indexX1Y2 = (((y+1) * width) + x) * 4;\n" \
-"const int indexX2Y2 = (((y+1) * width) + x+1) * 4;\n" \
-"const int maxIndex = (width * height -1) * 4;\n" \
+"const int indexX2Y1 = ((y * width) + x + 1) * 4;\n" \
+"const int indexX1Y2 = (((y + 1) * width) + x) * 4;\n" \
+"const int indexX2Y2 = (((y + 1) * width) + x + 1) * 4;\n" \
+"const int maxIndex = (width * height - 1) * 4;\n" \
 "\n" \
-"if(indexX2Y2 < maxIndex-height - 100){\n" \
+"if (indexX2Y2 < maxIndex - height - 100){\n" \
 "outCol.x = (1.0 - a)*(1.0 - b)*input[indexX1Y1] + a*(1.0 - b)*input[indexX2Y1] + (1.0 - a)*b*input[indexX1Y2] + a*b*input[indexX2Y2];\n" \
 "outCol.y = (1.0 - a)*(1.0 - b)*input[indexX1Y1 + 1] + a*(1.0 - b)*input[indexX2Y1 + 1] + (1.0 - a)*b*input[indexX1Y2 + 1] + a*b*input[indexX2Y2 + 1];\n" \
 "outCol.z = (1.0 - a)*(1.0 - b)*input[indexX1Y1 + 2] + a*(1.0 - b)*input[indexX2Y1 + 2] + (1.0 - a)*b*input[indexX1Y2 + 2] + a*b*input[indexX2Y2 + 2];\n" \
 "outCol.w = (1.0 - a)*(1.0 - b)*input[indexX1Y1 + 3] + a*(1.0 - b)*input[indexX2Y1 + 3] + (1.0 - a)*b*input[indexX1Y2 + 3] + a*b*input[indexX2Y2 + 3];\n" \
-"} else {\n" \
+"}\n" \
+"else {\n" \
 "outCol.x = input[indexX1Y1];\n" \
-"outCol.y = input[indexX1Y1+ 1];\n" \
-"outCol.z = input[indexX1Y1+ 2];\n" \
-"outCol.w = input[indexX1Y1+ 3];\n" \
+"outCol.y = input[indexX1Y1 + 1];\n" \
+"outCol.z = input[indexX1Y1 + 2];\n" \
+"outCol.w = input[indexX1Y1 + 3];\n" \
 "}\n" \
 "return outCol;\n" \
 "}\n" \
 "\n" \
 "__kernel void GoproVRKernel(\n" \
-"int p_Width, int p_Height, __global float* p_Fov, __global float* p_Fisheye,\n" \
-"__global const float* p_Input, __global float* p_Output, __global float* r, int samples, bool bilinear)\n" \
+"int p_Width, int p_Height, __global float* p_Fov, __global float* p_Tinyplanet, __global float* p_Rectilinear,\n" \
+"__global const float* p_Input, __global float* p_Output, __global float* r, int samples, int bilinear)\n" \
 "{\n" \
 "const int x = get_global_id(0);\n" \
 "const int y = get_global_id(1);\n" \
@@ -128,16 +159,20 @@ const char *KernelSource = "\n" \
 "dir.y /= aspect;\n" \
 "dir.z = fov;\n" \
 "\n" \
+"float3 tinyplanet = tinyPlanetSph(dir);\n" \
+"tinyplanet = normalize(tinyplanet);\n" \
+"\n" \
 "float16 rotMat = { r[i * 9 + 0], r[i * 9 + 1], r[i * 9 + 2],\n" \
 "r[i * 9 + 3], r[i * 9 + 4], r[i * 9 + 5],\n" \
 "r[i * 9 + 6], r[i * 9 + 7], r[i * 9 + 8], 0, 0, 0, 0, 0, 0, 0 };\n" \
 "\n" \
-"float3 rectdir = dir;\n" \
-"rectdir = matMul(rotMat, dir);\n" \
+"tinyplanet = matMul(rotMat, tinyplanet);\n" \
+"float3 rectdir = matMul(rotMat, dir);\n" \
 "\n" \
 "rectdir = normalize(rectdir);\n" \
 "\n" \
-"dir = mix(rectdir, fisheyeDir(dir, rotMat), p_Fisheye[i]);\n" \
+"dir = mix(fisheyeDir(dir, rotMat), tinyplanet, p_Tinyplanet[i]);\n" \
+"dir = mix(dir, rectdir, p_Rectilinear[i]);\n" \
 "\n" \
 "float2 iuv = polarCoord(dir);\n" \
 "\n" \
@@ -158,7 +193,7 @@ const char *KernelSource = "\n" \
 "interpCol = linInterpCol(iuv, p_Input, p_Width, p_Height);\n" \
 "}\n" \
 "else {\n" \
-"interpCol = { p_Input[index_new + 0], p_Input[index_new + 1], p_Input[index_new + 2], p_Input[index_new + 3] };\n" \
+"interpCol = (float4)( p_Input[index_new + 0], p_Input[index_new + 1], p_Input[index_new + 2], p_Input[index_new + 3] );\n" \
 "}\n" \
 "\n" \
 "accum_col.x += interpCol.x;\n" \

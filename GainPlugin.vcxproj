@@ -146,6 +146,7 @@ copy /Y "$(TargetPath)" /B "$(OutDir)GoproVRPlugin.ofx.bundle\Contents\Win64\Gop
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\OpenFX-1.3\include\ofxProperty.h" />
+    <ClInclude Include="GoproVRPlugin.h" />
     <ClInclude Include="MathUtil.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>

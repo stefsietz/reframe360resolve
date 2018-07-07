@@ -19,6 +19,8 @@
 #define kSupportsMultiResolution false
 #define kSupportsMultipleClipPARs false
 
+#define MAX_CAM_NUM 20
+
 #define M_PI 3.14159265358979323846
 
 ///GLM Imports
@@ -26,6 +28,30 @@
 #include "MathUtil.h"
 
 ////////////////////////////////////////////////////////////////////////////////
+
+typedef struct  CameraParams {
+	float pitch = 0;
+	float yaw = 0;
+	float roll = 0;
+	float fov = 1.0;
+	float tinyplanet = 1;
+	float rectilinear = 0;
+}CameraParams;
+
+typedef struct ReframeParamSet {
+	CameraParams mainCamParams;
+
+	int activeCamera = 1;
+	int camera1 = 1;
+	int camera2 = 2;
+	float blend = 0;
+	float acceleration = 3.0f;
+
+	bool forceActiveAuxCamera = false;
+
+	CameraParams auxCamParams[20];
+
+}ReframeParamSet;
 
 class ImageScaler : public OFX::ImageProcessor
 {
@@ -40,15 +66,20 @@ public:
     virtual void multiThreadProcessImages(OfxRectI p_ProcWindow);
 
     void setSrcImg(OFX::Image* p_SrcImg);
-    void setParams(float* p_RotMat, float* p_Fov, float* p_Fisheye, int p_Samples, bool p_Bilinear);
+	void setParams(float* p_RotMat, float* p_Fov, float* p_Tinyplanet, float* p_Rectilinear, int p_Samples, bool p_Bilinear);
 
 private:
     OFX::Image* _srcImg;
     float* _rotMat;
 	float* _fov;
-	float* _fisheye;
+	float* _tinyplanet;
+	float* _rectilinear;
 	int _samples;
 	bool _bilinear;
+
+	CameraParams mainCamParams;
+
+	std::map<int, CameraParams> auxCameraParams();
 };
 
 ImageScaler::ImageScaler(OFX::ImageEffect& p_Instance)
@@ -80,19 +111,32 @@ void yawMatrix(float yaw, float** out) {
 	(*out)[8] = cos(yaw);
 }
 
+void rollMatrix(float roll, float** out) {
+	(*out)[0] = cos(roll);
+	(*out)[1] = -sin(roll);
+	(*out)[2] = 0;
+	(*out)[3] = sin(roll);
+	(*out)[4] = cos(roll);
+	(*out)[5] = 0;
+	(*out)[6] = 0;
+	(*out)[7] = 0;
+	(*out)[8] = 1.0;
+}
+
+
 void matMul(const float* y, const float* p, float** outmat){
 	(*outmat)[0] = p[0] * y[0] + p[3] * y[1] + p[6] * y[2];
 	(*outmat)[1] = p[1] * y[0] + p[4] * y[1] + p[7] * y[2];
-	(*outmat)[2] = p[3] * y[0] + p[5] * y[1] + p[8] * y[2];
+	(*outmat)[2] = p[2] * y[0] + p[5] * y[1] + p[8] * y[2];
 	(*outmat)[3] = p[0] * y[3] + p[3] * y[4] + p[6] * y[5];
 	(*outmat)[4] = p[1] * y[3] + p[4] * y[4] + p[7] * y[5];
-	(*outmat)[5] = p[3] * y[3] + p[5] * y[4] + p[8] * y[5];
+	(*outmat)[5] = p[2] * y[3] + p[5] * y[4] + p[8] * y[5];
 	(*outmat)[6] = p[0] * y[6] + p[3] * y[7] + p[6] * y[8];
 	(*outmat)[7] = p[1] * y[6] + p[4] * y[7] + p[7] * y[8];
-	(*outmat)[8] = p[3] * y[6] + p[5] * y[7] + p[8] * y[8];
+	(*outmat)[8] = p[2] * y[6] + p[5] * y[7] + p[8] * y[8];
 }
 
-extern void RunCudaKernel(int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples, bool p_Bilinear);
+extern void RunCudaKernel(int p_Width, int p_Height, float* p_Fov, float* p_Tinyplanet, float* p_Rectilinear, const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples, bool p_Bilinear);
 
 void ImageScaler::processImagesCUDA()
 {
@@ -103,7 +147,7 @@ void ImageScaler::processImagesCUDA()
     float* input = static_cast<float*>(_srcImg->getPixelData());
     float* output = static_cast<float*>(_dstImg->getPixelData());
 
-	RunCudaKernel(width, height, _fov, _fisheye, input, output, _rotMat, _samples, _bilinear);
+	RunCudaKernel(width, height, _fov, _tinyplanet, _rectilinear, input, output, _rotMat, _samples, _bilinear);
 }
 
 #if defined(__APPLE__)
@@ -122,7 +166,7 @@ void ImageScaler::processImagesMetal()
 }
 #endif
 
-extern void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, float* p_Fisheye, const float* p_Input, float* p_Output, float* p_RotMat, int p_Samples, bool p_Bilinear);
+extern void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, float* p_Tinyplanet, float* p_Rectilinear, const float* p_Input, float* p_Output, float* p_RotMat, int p_Samples, bool p_Bilinear);
 
 void ImageScaler::processImagesOpenCL()
 {
@@ -133,7 +177,7 @@ void ImageScaler::processImagesOpenCL()
     float* input = static_cast<float*>(_srcImg->getPixelData());
 	float* output = static_cast<float*>(_dstImg->getPixelData());
 
-	RunOpenCLKernel(_pOpenCLCmdQ, width, height, _fov, _fisheye, input, output, _rotMat, _samples, _bilinear);
+	RunOpenCLKernel(_pOpenCLCmdQ, width, height, _fov, _tinyplanet, _rectilinear, input, output, _rotMat, _samples, _bilinear);
 }
 
 void ImageScaler::multiThreadProcessImages(OfxRectI p_ProcWindow)
@@ -174,11 +218,16 @@ void ImageScaler::multiThreadProcessImages(OfxRectI p_ProcWindow)
 				dir.y /= aspect;
 				dir.z = fov;
 
+				vec3 tinyplanet = tinyPlanetSph(dir);
+				tinyplanet = normalize(tinyplanet);
+
+				tinyplanet = rotMat * tinyplanet;
 				vec3 rectdir = rotMat * dir;
 
 				rectdir = normalize(rectdir);
 
-				dir = mix(rectdir, fisheyeDir(dir, rotMat), _fisheye[i]);
+				dir = mix(fisheyeDir(dir, rotMat), tinyplanet, _tinyplanet[i]);
+				dir = mix(dir, rectdir, _rectilinear[i]);
 
 				vec2 iuv = polarCoord(dir);
 				iuv = repairUv(iuv);
@@ -236,11 +285,12 @@ void ImageScaler::setSrcImg(OFX::Image* p_SrcImg)
     _srcImg = p_SrcImg;
 }
 
-void ImageScaler::setParams(float* p_RotMat, float* p_Fov, float* p_Fisheye, int p_Samples, bool p_Bilinear)
+void ImageScaler::setParams(float* p_RotMat, float* p_Fov, float* p_Tinyplanet, float* p_Rectilinear, int p_Samples, bool p_Bilinear)
 {
 	_rotMat = p_RotMat;
 	_fov = p_Fov;
-    _fisheye = p_Fisheye;
+    _tinyplanet = p_Tinyplanet;
+	_rectilinear = p_Rectilinear;
     _samples = p_Samples;
 	_bilinear = p_Bilinear;
 }
@@ -267,6 +317,12 @@ public:
     /* Set the enabledness of the component scale params depending on the type of input image and the state of the scaleComponents param */
     void setEnabledness();
 
+	void setActiveParams();
+
+	std::string paramIdForCam(std::string baseName, int cam);
+
+	void setHiddenParam(std::string name, int cam, double value);
+
     /* Set up and run a processor */
     void setupAndProcess(ImageScaler &p_ImageScaler, const OFX::RenderArguments& p_Args);
 
@@ -277,20 +333,37 @@ private:
 
     OFX::DoubleParam* m_Pitch;
     OFX::DoubleParam* m_Yaw;
+	OFX::DoubleParam* m_Roll;
     OFX::DoubleParam* m_Fov;
-    OFX::DoubleParam* m_Fisheye;
+
+	OFX::IntParam* m_ActiveCamera;
+	OFX::IntParam* m_Camera1;
+	OFX::IntParam* m_Camera2;
+
+	OFX::BooleanParam* m_ShowActiveCamera;
 
 	OFX::DoubleParam* m_Blend;
 	OFX::DoubleParam* m_Accel;
+
+	OFX::DoubleParam* m_Pitch1;
+	OFX::DoubleParam* m_Yaw1;
+	OFX::DoubleParam* m_Roll1;
+	OFX::DoubleParam* m_Fov1;
+	OFX::DoubleParam* m_Tinyplanet1;
+	OFX::DoubleParam* m_Recti1;
+
+	OFX::DoubleParam* m_Pitch2[MAX_CAM_NUM];
+	OFX::DoubleParam* m_Yaw2[MAX_CAM_NUM];
+	OFX::DoubleParam* m_Roll2[MAX_CAM_NUM];
+	OFX::DoubleParam* m_Fov2[MAX_CAM_NUM];
+	OFX::DoubleParam* m_Tinyplanet2[MAX_CAM_NUM];
+	OFX::DoubleParam* m_Recti2[MAX_CAM_NUM];
 
 	OFX::DoubleParam* m_Shutter;
 	OFX::IntParam* m_Samples;
 	OFX::BooleanParam* m_Bilinear;
 
-	OFX::DoubleParam* m_Pitch2;
-	OFX::DoubleParam* m_Yaw2;
-	OFX::DoubleParam* m_Fov2;
-	OFX::DoubleParam* m_Fisheye2;
+	//ReframeParamSet m_ParamStruct;
 };
 
 GainPlugin::GainPlugin(OfxImageEffectHandle p_Handle)
@@ -299,10 +372,16 @@ GainPlugin::GainPlugin(OfxImageEffectHandle p_Handle)
     m_DstClip = fetchClip(kOfxImageEffectOutputClipName);
     m_SrcClip = fetchClip(kOfxImageEffectSimpleSourceClipName);
 
-	m_Pitch =  fetchDoubleParam("pitch");
-    m_Yaw = fetchDoubleParam("yaw");
-    m_Fov = fetchDoubleParam("fov");
-    m_Fisheye = fetchDoubleParam("fisheye");
+	m_Pitch =  fetchDoubleParam("main_pitch");
+    m_Yaw = fetchDoubleParam("main_yaw");
+	m_Roll = fetchDoubleParam("main_roll");
+    m_Fov = fetchDoubleParam("main_fov");
+
+	m_ActiveCamera = fetchIntParam("active_cam");
+	m_Camera1 = fetchIntParam("cam1");
+	m_Camera2 = fetchIntParam("cam2");
+
+	m_ShowActiveCamera = fetchBooleanParam("show_active_cam");
 
 	m_Blend = fetchDoubleParam("blend");
 	m_Accel = fetchDoubleParam("accel");
@@ -311,10 +390,21 @@ GainPlugin::GainPlugin(OfxImageEffectHandle p_Handle)
 	m_Samples = fetchIntParam("samples");
 	m_Bilinear = fetchBooleanParam("bilinear");
 
-	m_Pitch2 = fetchDoubleParam("pitch2");
-	m_Yaw2 = fetchDoubleParam("yaw2");
-	m_Fov2 = fetchDoubleParam("fov2");
-	m_Fisheye2 = fetchDoubleParam("fisheye2");
+	m_Pitch1 = fetchDoubleParam("aux_pitch");
+	m_Yaw1 = fetchDoubleParam("aux_yaw");
+	m_Roll1 = fetchDoubleParam("aux_roll");
+	m_Fov1 = fetchDoubleParam("aux_fov");
+	m_Tinyplanet1 = fetchDoubleParam("aux_tiny");
+	m_Recti1 = fetchDoubleParam("aux_recti");
+
+	for (int i = 0; i < MAX_CAM_NUM; i++){
+		m_Pitch2[i] = fetchDoubleParam(paramIdForCam("aux_pitch", i));
+		m_Yaw2[i] = fetchDoubleParam(paramIdForCam("aux_yaw", i));
+		m_Roll2[i] = fetchDoubleParam(paramIdForCam("aux_roll", i));
+		m_Fov2[i] = fetchDoubleParam(paramIdForCam("aux_fov", i));
+		m_Tinyplanet2[i] = fetchDoubleParam(paramIdForCam("aux_tiny", i));
+		m_Recti2[i] = fetchDoubleParam(paramIdForCam("aux_recti", i));
+	}
 
     // Set the enabledness of our RGBA sliders
     setEnabledness();
@@ -338,11 +428,77 @@ bool GainPlugin::isIdentity(const OFX::IsIdentityArguments& p_Args, OFX::Clip*& 
     return false;
 }
 
+/*void GainPlugin::setActiveParams()
+{
+	double pitch = 0.0, roll = 0.0, yaw = 0.0, fov = 1.0,
+		pitch1 = 1.0, yaw1 = 1.0, roll1 = 0.0, fov1 = 1.0, tinyplanet1 = 1.0, recti1 = 0.0,
+		blend = 0.0, accel = 0.5;
+
+	int mb_samples = (int)m_Samples->getValue();
+	float mb_shutter = m_Shutter->getValue() * 0.5;
+	int bilinear = m_Bilinear->getValue();
+
+	int activeCam = m_ActiveCamera->getValue()-1;
+	int cam1 = m_Camera1->getValue();
+	int cam2 = m_Camera2->getValue();
+
+	bool showActiveCam = m_ShowActiveCamera->getValue();
+
+	pitch = m_Pitch->getValue();
+	yaw = m_Yaw->getValue();
+	roll = m_Roll->getValue();
+	fov = m_Fov->getValue();
+
+	pitch1 = m_Pitch1->getValue();
+	yaw1 = m_Yaw1->getValue();
+	roll1 = m_Roll1->getValue();
+	fov1 = m_Fov1->getValue();
+	tinyplanet1 = m_Tinyplanet1->getValue();
+	recti1 = m_Recti1->getValue();
+
+	m_ParamStruct.mainCamParams.pitch = pitch;
+	m_ParamStruct.mainCamParams.yaw = yaw;
+	m_ParamStruct.mainCamParams.yaw = roll;
+	m_ParamStruct.mainCamParams.yaw = fov;
+
+	m_ParamStruct.activeCamera = activeCam;
+	m_ParamStruct.camera1 = cam1;
+	m_ParamStruct.camera2 = cam2;
+
+	m_ParamStruct.forceActiveAuxCamera = showActiveCam;
+
+	m_ParamStruct.auxCamParams[activeCam].pitch = pitch1;
+	m_ParamStruct.auxCamParams[activeCam].yaw = yaw1;
+	m_ParamStruct.auxCamParams[activeCam].roll = roll1;
+	m_ParamStruct.auxCamParams[activeCam].fov = fov1;
+	m_ParamStruct.auxCamParams[activeCam].tinyplanet = tinyplanet1;
+	m_ParamStruct.auxCamParams[activeCam].rectilinear = recti1;
+}*/
+
 void GainPlugin::changedParam(const OFX::InstanceChangedArgs& p_Args, const std::string& p_ParamName)
 {
 
-    //setEnabledness();
+	if (p_ParamName.find("active_cam") == 0){
+		int activeCam = m_ActiveCamera->getValue();
+		activeCam--;
 
+		m_Pitch1->setValue(m_Pitch2[activeCam]->getValue());
+		m_Yaw1->setValue(m_Yaw2[activeCam]->getValue());
+		m_Roll1->setValue(m_Roll2[activeCam]->getValue());
+		m_Fov1->setValue(m_Fov2[activeCam]->getValue());
+		m_Tinyplanet1->setValue(m_Tinyplanet2[activeCam]->getValue());
+		m_Recti1->setValue(m_Recti2[activeCam]->getValue());
+	}
+	else if(p_ParamName.find("hidden") == std::string::npos && p_ParamName.find("aux")==0){
+		double value = fetchDoubleParam(p_ParamName)->getValue();
+		int activeCam = fetchIntParam("active_cam")->getValue();
+
+		std::stringstream ss;
+		ss << p_ParamName << "_hidden_" << activeCam;
+		std::string name = ss.str();
+
+		setHiddenParam(name, activeCam, value);
+	}
 }
 
 void GainPlugin::changedClip(const OFX::InstanceChangedArgs& p_Args, const std::string& p_ClipName)
@@ -358,10 +514,11 @@ void GainPlugin::setEnabledness()
     // the component enabledness depends on the clip being RGBA and the param being true
     const bool enable = ((m_SrcClip->getPixelComponents() == OFX::ePixelComponentRGBA));
 
+	/*
     m_Pitch->setEnabled(enable);
     m_Yaw->setEnabled(enable);
     m_Fov->setEnabled(enable);
-    m_Fisheye->setEnabled(enable);
+	m_Recti->setEnabled(enable);
 
 	m_Blend->setEnabled(enable);
 	m_Accel->setEnabled(enable);
@@ -370,11 +527,7 @@ void GainPlugin::setEnabledness()
 	m_Yaw2->setEnabled(enable);
 	m_Fov2->setEnabled(enable);
 	m_Fisheye2->setEnabled(enable);
-}
-
-static float fitRange(float value, float in_min, float in_max, float out_min, float out_max){
-	float out = out_min + ((out_max - out_min) / (in_max - in_min)) * (value - in_min);
-	return std::min(out_max, std::max(out, out_min));
+	*/
 }
 
 static float interpParam(OFX::DoubleParam* param, const OFX::RenderArguments& p_Args, float offset){
@@ -414,14 +567,28 @@ void GainPlugin::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
         OFX::throwSuiteStatusException(kOfxStatErrValue);
     }
 
-	double pitch = 1.0, yaw = 1.0, fov = 1.0, fisheye = 1.0, pitch2 = 1.0, yaw2 = 1.0, fov2 = 1.0, fisheye2 = 1.0, blend = 0.0, accel = 0.5;
+	double pitch = 0.0, roll = 0.0, yaw = 0.0, fov = 1.0,
+		pitch1 = 1.0, yaw1 = 1.0, roll1 = 0.0, fov1 = 1.0, tinyplanet1 = 1.0, recti1 = 0.0,
+		pitch2 = 1.0, yaw2 = 1.0, roll2 = 0.0, fov2 = 1.0, tinyplanet2 = 1.0, recti2 = 0.0,
+		blend = 0.0, accel = 0.5;
 
 	int mb_samples = (int)m_Samples->getValueAtTime(p_Args.time);
 	float mb_shutter = m_Shutter->getValueAtTime(p_Args.time) * 0.5;
 	int bilinear = m_Bilinear->getValueAtTime(p_Args.time);
 
+	int activeCam = m_ActiveCamera->getValueAtTime(p_Args.time)-1;
+	int cam1 = m_Camera1->getValueAtTime(p_Args.time)-1;
+	int cam2 = m_Camera2->getValueAtTime(p_Args.time)-1;
+
+	bool showActiveCam = m_ShowActiveCamera->getValueAtTime(p_Args.time);
+
+	if (showActiveCam) {
+		cam1 = activeCam;
+	}
+
 	float* fovs = (float*)malloc(sizeof(float)*mb_samples);
-	float* fisheyes = (float*)malloc(sizeof(float)*mb_samples);
+	float* tinyplanets = (float*)malloc(sizeof(float)*mb_samples);
+	float* rectilinears = (float*)malloc(sizeof(float)*mb_samples);
 	float* rotmats = (float*)malloc(sizeof(float)*mb_samples*9);
 
 	for (int i = 0; i < mb_samples; i++){
@@ -434,16 +601,25 @@ void GainPlugin::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 
 		pitch = interpParam(m_Pitch, p_Args, offset);
 		yaw = interpParam(m_Yaw, p_Args, offset);
+		roll = interpParam(m_Roll, p_Args, offset);
 		fov = interpParam(m_Fov, p_Args, offset);
-		fisheye = interpParam(m_Fisheye, p_Args, offset);
 
 		blend = interpParam(m_Blend, p_Args, offset);
 		accel = interpParam(m_Accel, p_Args, offset);
 
-		pitch2 = interpParam(m_Pitch2, p_Args, offset);
-		yaw2 = interpParam(m_Yaw2, p_Args, offset);
-		fov2 = interpParam(m_Fov2, p_Args, offset);
-		fisheye2 = interpParam(m_Fisheye2, p_Args, offset);
+		pitch1 = interpParam(m_Pitch2[cam1], p_Args, offset);
+		yaw1 = interpParam(m_Yaw2[cam1], p_Args, offset);
+		roll1 = interpParam(m_Roll2[cam1], p_Args, offset);
+		fov1 = interpParam(m_Fov2[cam1], p_Args, offset);
+		tinyplanet1 = interpParam(m_Tinyplanet2[cam1], p_Args, offset);
+		recti1 = interpParam(m_Recti2[cam1], p_Args, offset);
+
+		pitch2 = interpParam(m_Pitch2[cam2], p_Args, offset);
+		yaw2 = interpParam(m_Yaw2[cam2], p_Args, offset);
+		roll2 = interpParam(m_Roll2[cam2], p_Args, offset);
+		fov2 = interpParam(m_Fov2[cam2], p_Args, offset);
+		tinyplanet2 = interpParam(m_Tinyplanet2[cam2], p_Args, offset);
+		recti2 = interpParam(m_Recti2[cam2], p_Args, offset);
 
 		if (blend < 0.5){
 			blend = fitRange(blend, 0, 0.5, 0, 1);
@@ -458,26 +634,39 @@ void GainPlugin::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 			blend = fitRange(blend, 0, 1, 0.5, 1.0);
 		}
 
-		pitch = pitch * (1.0 - blend) + pitch2 * blend;
-		yaw = yaw * (1.0 - blend) + yaw2 * blend;
-		fov = fov * (1.0 - blend) + fov2 * blend;
-		fisheye = fisheye * (1.0 - blend) + fisheye2 * blend;
+		if (showActiveCam) {
+			blend = 0;
+		}
+
+		pitch = (pitch1 * (1.0 - blend) + pitch2 * blend) + pitch;
+		yaw = (yaw1 * (1.0 - blend) + yaw2 * blend) + yaw;
+		roll = (roll1 * (1.0 - blend) + roll2 * blend) + roll;
+		fov = (fov1 * (1.0 - blend) + fov2 * blend) * fov;
+		tinyplanet1 = (tinyplanet1 * (1.0 - blend) + tinyplanet2 * blend);
+		recti1 = (recti1 * (1.0 - blend) + recti2 * blend);
 
 		float* pitchMat = (float*)calloc(9, sizeof(float));
 		pitchMatrix(-pitch / 180 * M_PI, &pitchMat);
 		float* yawMat = (float*)calloc(9, sizeof(float));
 		yawMatrix(yaw / 180 * M_PI, &yawMat);
+		float* rollMat = (float*)calloc(9, sizeof(float));
+		rollMatrix(-roll / 180 * M_PI, &rollMat);
+
+		float* pitchYawMat = (float*)calloc(9, sizeof(float));
 		float* rotMat = (float*)calloc(9, sizeof(float));
-		matMul(yawMat, pitchMat, &rotMat);
+		matMul(pitchMat, rollMat, &pitchYawMat);
+		matMul(yawMat, pitchYawMat, &rotMat);
 
 		free(pitchMat);
 		free(yawMat);
+		free(rollMat);
 
 		memcpy(&(rotmats[i * 9]), rotMat, sizeof(float) * 9);
 		free(rotMat);
 
 		fovs[i] = fov;
-		fisheyes[i] = fisheye;
+		tinyplanets[i] = tinyplanet1;
+		rectilinears[i] = recti1;
 	}
     
     // Set the images
@@ -491,7 +680,7 @@ void GainPlugin::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
     p_ImageScaler.setRenderWindow(p_Args.renderWindow);
 
     // Set the scales
-	p_ImageScaler.setParams(rotmats, fovs, fisheyes, mb_samples, bilinear);
+	p_ImageScaler.setParams(rotmats, fovs, tinyplanets, rectilinears, mb_samples, bilinear);
 
     // Call the base class process member, this will call the derived templated process code
     p_ImageScaler.process();
@@ -530,8 +719,8 @@ void GainPluginFactory::describe(OFX::ImageEffectDescriptor& p_Desc)
     p_Desc.setSupportsMultipleClipPARs(kSupportsMultipleClipPARs);
 
     // Setup OpenCL and CUDA render capability flags
-    p_Desc.setSupportsOpenCLRender(true);
-    p_Desc.setSupportsCudaRender(true);
+	p_Desc.setSupportsOpenCLRender(false);
+	p_Desc.setSupportsCudaRender(false);
     p_Desc.setSupportsMetalRender(false);
 }
 
@@ -612,59 +801,107 @@ void GainPluginFactory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
     // Make some pages and to things in
     PageParamDescriptor* page = p_Desc.definePageParam("Controls");
 
-    GroupParamDescriptor* camera1ParamsGroup = p_Desc.defineGroupParam("camera1Params");
-    camera1ParamsGroup->setHint("Scales on the individual component");
-    camera1ParamsGroup->setLabels("Camera 1 Parameters", "Camera 1 Parameters", "Camera 1 Parameters");
+    GroupParamDescriptor* camera1ParamsGroup = p_Desc.defineGroupParam("mainCameraParams");
+    camera1ParamsGroup->setHint("Main Camera Parameters");
+    camera1ParamsGroup->setLabels("Main Camera Parameters", "Main Camera Parameters", "Main Camera Parameters");
 
 
     // Make the camera 1 params
-	DoubleParamDescriptor* param = defineParam(p_Desc, "pitch", "Pitch", "Up/down camera rotation", camera1ParamsGroup, -90, 90, 0);
+	DoubleParamDescriptor* param = defineParam(p_Desc, "main_pitch", "Pitch", "Up/down camera rotation", camera1ParamsGroup, -90, 90, 0);
     page->addChild(*param);
 
-    param = defineParam(p_Desc, "yaw", "Yaw", "Left/right camera rotation", camera1ParamsGroup, -180, 180, 0);
+    param = defineParam(p_Desc, "main_yaw", "Yaw", "Left/right camera rotation", camera1ParamsGroup, -180, 180, 0);
     page->addChild(*param);
 
-    param = defineParam(p_Desc, "fov", "Field of View", "Camera field of view", camera1ParamsGroup, 0.15, 5, 1);
+	param = defineParam(p_Desc, "main_roll", "Roll", "Camera Roll", camera1ParamsGroup, -180, 180, 0);
+	page->addChild(*param);
+
+    param = defineParam(p_Desc, "main_fov", "Field of View", "Camera field of view", camera1ParamsGroup, 0.15, 5, 1);
     page->addChild(*param);
-
-    param = defineParam(p_Desc, "fisheye", "Fisheye", "Degree of fisheye distortion", camera1ParamsGroup, 0, 1, 0, 0, 1);
-    page->addChild(*param);
-
-	GroupParamDescriptor* camera2ParamsGroup = p_Desc.defineGroupParam("camera2Params");
-	camera2ParamsGroup->setHint("Scales on the individual component");
-	camera2ParamsGroup->setLabels("Camera 2 Parameters", "Camera 2 Parameters", "Camera 2 Parameters");
-
-	// Make the camera 2 params
-	param = defineParam(p_Desc, "pitch2", "Pitch", "Up/down camera rotation", camera2ParamsGroup, -90, 90, 0);
-	page->addChild(*param);
-
-	param = defineParam(p_Desc, "yaw2", "Yaw", "Left/right camera rotation", camera2ParamsGroup, -180, 180, 0);
-	page->addChild(*param);
-
-	param = defineParam(p_Desc, "fov2", "Field of View", "Camera field of view", camera2ParamsGroup, 0.15, 5, 1);
-	page->addChild(*param);
-
-	param = defineParam(p_Desc, "fisheye2", "Fisheye", "Degree of fisheye distortion", camera2ParamsGroup, 0, 1, 0, 0, 1);
-	page->addChild(*param);
 
 	GroupParamDescriptor* blendGroup = p_Desc.defineGroupParam("blendParams");
 	blendGroup->setHint("Blend Camera Parameters");
 	blendGroup->setLabels("Blend Camera Parameters", "Blend Camera Parameters", "Blend Camera Parameters");
 
+	IntParamDescriptor* intParam = defineIntParam(p_Desc, "cam1", "Camera 1", "Camera 1", blendGroup, 1, MAX_CAM_NUM, 1, 1, 20);
+	page->addChild(*intParam);
+
+	intParam = defineIntParam(p_Desc, "cam2", "Camera 2", "Camera 2", blendGroup, 1, MAX_CAM_NUM, 2, 1, 20);
+	page->addChild(*intParam);
+
 	param = defineParam(p_Desc, "blend", "Blend", "Blend Cameras", blendGroup, 0, 1, 0);
 	page->addChild(*param);
 
-	param = defineParam(p_Desc, "accel", "Blend Acceleration", "Blend Acceleration", blendGroup, 0, 1, 0);
+	param = defineParam(p_Desc, "accel", "Blend Acceleration", "Blend Acceleration", blendGroup, 1, 20, 3, 0.5, 20);
 	page->addChild(*param);
 
+	GroupParamDescriptor* cameraSelctionParamsGroup = p_Desc.defineGroupParam("cameraSelectionParams");
+	cameraSelctionParamsGroup->setHint("Camera Selection Parameters");
+	cameraSelctionParamsGroup->setLabels("Camera Selection Parameters", "Camera Selection Parameters", "Camera Selection Parameters");
+
+	intParam = defineIntParam(p_Desc, "active_cam", "Edit Camera", "Edit Camera", cameraSelctionParamsGroup, 1, MAX_CAM_NUM, 1, 1, 20);
+	page->addChild(*intParam);
+
+	BooleanParamDescriptor* boolParam = defineBooleanParam(p_Desc, "show_active_cam", "Show Edit Camera", "Show Edit Camera", cameraSelctionParamsGroup, false);
+	page->addChild(*boolParam);
+
+	GroupParamDescriptor* camera2ParamsGroup = p_Desc.defineGroupParam("auxCameraParams");
+	camera2ParamsGroup->setHint("Aux Camera Parameters");
+	camera2ParamsGroup->setLabels("Aux Camera Parameters", "Aux Camera Parameters", "Aux Camera Parameters");
+
+	// Make the camera 2 params
+	param = defineParam(p_Desc, "aux_pitch", "Pitch", "Up/down camera rotation", camera2ParamsGroup, -90, 90, 0);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "aux_yaw", "Yaw", "Left/right camera rotation", camera2ParamsGroup, -180, 180, 0);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "aux_roll", "Roll", "Camera Roll", camera2ParamsGroup, -180, 180, 0);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "aux_fov", "Field of View", "Camera field of view", camera2ParamsGroup, 0.15, 5, 1);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "aux_recti", "Rectilinear Projection", "Rectilinear Projection", camera2ParamsGroup, 0, 1, 0, 0, 1);
+	page->addChild(*param);
+
+	param = defineParam(p_Desc, "aux_tiny", "Tiny Planet", "Blend between standard Fisheye projection and Tiny Planet Projection", camera2ParamsGroup, 0, 1, 0, 0, 1);
+	page->addChild(*param);
+
+	//hidden params
+	GroupParamDescriptor* hiddenCameraParamsGroup = p_Desc.defineGroupParam("hiddenCameraParams");
+	hiddenCameraParamsGroup->setHint("Camera Parameters");
+	hiddenCameraParamsGroup->setLabels("Camera Parameters", "Camera Parameters", "Camera Parameters");
+	hiddenCameraParamsGroup->setIsSecret(true);
+
+	for (int i = 0; i < MAX_CAM_NUM; i++){ 
+		param = defineParam(p_Desc, paramIdForCam("aux_pitch", i), "Pitch", "Up/down camera rotation", hiddenCameraParamsGroup, -90, 90, 0);
+		page->addChild(*param);
+
+		param = defineParam(p_Desc, paramIdForCam("aux_yaw", i), "Yaw", "Left/right camera rotation", hiddenCameraParamsGroup, -180, 180, 0);
+		page->addChild(*param);
+
+		param = defineParam(p_Desc, paramIdForCam("aux_roll", i), "Roll", "Camera Roll", hiddenCameraParamsGroup, -180, 180, 0);
+		page->addChild(*param);
+
+		param = defineParam(p_Desc, paramIdForCam("aux_fov", i), "Field of View", "Camera field of view", hiddenCameraParamsGroup, 0.15, 5, 1);
+		page->addChild(*param);
+
+		param = defineParam(p_Desc, paramIdForCam("aux_tiny", i), "Tiny Planet", "Blend between standard Fisheye projection and Tiny Planet Projection", hiddenCameraParamsGroup, 0, 1, 0, 0, 1);
+		page->addChild(*param);
+
+		param = defineParam(p_Desc, paramIdForCam("aux_recti", i), "Rectify Projection", "Rectify Projection", hiddenCameraParamsGroup, 0, 1, 0, 0, 1);
+		page->addChild(*param);
+	}
+
 	GroupParamDescriptor* motionblurGroup = p_Desc.defineGroupParam("motionblurParams");
-	blendGroup->setHint("Blend Camera Parameters");
-	blendGroup->setLabels("Motion Blur Parameters", "Motion Blur Parameters", "Motion Blur Parameters");
+	motionblurGroup->setHint("Motion Camera Parameters");
+	motionblurGroup->setLabels("Motion Blur Parameters", "Motion Blur Parameters", "Motion Blur Parameters");
 
 	param = defineParam(p_Desc, "shutter", "Shutter Angle", "Shutter Angle", motionblurGroup, 0, 1, 0, 0, 3);
 	page->addChild(*param);
 
-	IntParamDescriptor* intParam = defineIntParam(p_Desc, "samples", "Samples", "Samples", motionblurGroup, 1, 20, 1, 1, 256);
+	intParam = defineIntParam(p_Desc, "samples", "Samples", "Samples", motionblurGroup, 1, 20, 1, 1, 256);
 	page->addChild(*intParam);
 
 	BooleanParamDescriptor* bilinearParam = defineBooleanParam(p_Desc, "bilinear", "Bilinear Filtering", "Bilinear Filtering", motionblurGroup, true);
@@ -681,3 +918,40 @@ void OFX::Plugin::getPluginIDs(PluginFactoryArray& p_FactoryArray)
     static GainPluginFactory gainPlugin;
     p_FactoryArray.push_back(&gainPlugin);
 }
+
+
+std::string GainPluginFactory::paramIdForCam(std::string baseName, int cam){
+	std::stringstream ss;
+	ss << baseName << "_hidden_" << cam;
+	return ss.str();
+}
+
+std::string GainPlugin::paramIdForCam(std::string baseName, int cam){
+	std::stringstream ss;
+	ss << baseName << "_hidden_" << cam;
+	return ss.str();
+}
+
+void GainPlugin::setHiddenParam(std::string name, int cam, double value){
+	cam--;
+
+	if (name.find("pitch") != std::string::npos){
+		m_Pitch2[cam]->setValue(value);
+	}
+	else if (name.find("yaw") != std::string::npos){
+		m_Yaw2[cam]->setValue(value);
+	}
+	else if (name.find("roll") != std::string::npos){
+		m_Roll2[cam]->setValue(value);
+	}
+	else if (name.find("fov") != std::string::npos){
+		m_Fov2[cam]->setValue(value);
+	}
+	else if (name.find("tiny") != std::string::npos){
+		m_Tinyplanet2[cam]->setValue(value);
+	}
+	else if (name.find("recti") != std::string::npos){
+		m_Recti2[cam]->setValue(value);
+	}
+}
+

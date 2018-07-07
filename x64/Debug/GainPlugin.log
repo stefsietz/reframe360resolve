@@ -1,10 +1,10 @@
-﻿Build started 27.06.2018 21:34:28.
+﻿Build started 07.07.2018 09:00:27.
      1>Project "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\GainPlugin.vcxproj" on node 2 (Rebuild target(s)).
      1>CudaClean:
-         cmd.exe /C "C:\Users\Stefan\AppData\Local\Temp\tmp22f338020b204bffa1c343fd031aaaaf.cmd"
-         "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"  -G   --keep-dir x64\Debug -maxrregcount=0  --machine 64 --compile   -g   -DCODE_ANALYSIS -DWIN32 -D_DEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /Od /Zi /RTC1 /MDd " -o x64\Debug\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" -clean
+         cmd.exe /C "C:\Users\Stefan\AppData\Local\Temp\tmp8bb2c3f82f7d487a9b366fed01ff95c8.cmd"
+         "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"  -G   --keep-dir x64\Debug -maxrregcount=0  --machine 64 --compile   -g   -DWIN32 -D_DEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /Od /Zi /RTC1 /MDd " -o x64\Debug\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" -clean
          
-         C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"  -G   --keep-dir x64\Debug -maxrregcount=0  --machine 64 --compile   -g   -DCODE_ANALYSIS -DWIN32 -D_DEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /Od /Zi /RTC1 /MDd " -o x64\Debug\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" -clean 
+         C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"  -G   --keep-dir x64\Debug -maxrregcount=0  --machine 64 --compile   -g   -DWIN32 -D_DEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /Od /Zi /RTC1 /MDd " -o x64\Debug\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" -clean 
          CudaKernel.cu
      1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120\Microsoft.CppBuild.targets(364,5): warning MSB8004: Output Directory does not end with a trailing slash.  This build instance will add the slash as it is required to allow proper evaluation of the Output Directory.
        PreBuildEvent:
@@ -13,45 +13,49 @@
          ['./HardcodeKernel.py', 'OpenCLKernel.cpp', 'GoproVRKernel.cl']
          bla
        AddCudaCompileDeps:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\cl.exe /E /nologo /showIncludes /TP /D__CUDACC__ /DCODE_ANALYSIS /DWIN32 /D_DEBUG /D_WINDOWS /D_USRDLL /D_WINDLL /D_UNICODE /DUNICODE /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin" /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /I. /FIcuda_runtime.h /c "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" 
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\cl.exe /E /nologo /showIncludes /TP /D__CUDACC__ /DWIN32 /D_DEBUG /D_WINDOWS /D_USRDLL /D_WINDLL /D_UNICODE /DUNICODE /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin" /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /I. /FIcuda_runtime.h /c "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" 
        CudaBuild:
          Compiling CUDA source file CudaKernel.cu...
-         cmd.exe /C "C:\Users\Stefan\AppData\Local\Temp\tmpbea272404e844ae2bd345a2e3fcbbea3.cmd"
-         "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -gencode=arch=compute_20,code=\"sm_20,compute_20\" --use-local-env --cl-version 2013 -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"  -G   --keep-dir x64\Debug -maxrregcount=0  --machine 64 --compile -cudart static  -g   -DCODE_ANALYSIS -DWIN32 -D_DEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /Od /Zi /RTC1 /MDd " -o x64\Debug\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu"
+         cmd.exe /C "C:\Users\Stefan\AppData\Local\Temp\tmp715159311bc943ba83df6c64c8a831d6.cmd"
+         "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -gencode=arch=compute_20,code=\"sm_20,compute_20\" --use-local-env --cl-version 2013 -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"  -G   --keep-dir x64\Debug -maxrregcount=0  --machine 64 --compile -cudart static  -g   -DWIN32 -D_DEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /Od /Zi /RTC1 /MDd " -o x64\Debug\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu"
          
-         C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -gencode=arch=compute_20,code=\"sm_20,compute_20\" --use-local-env --cl-version 2013 -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"  -G   --keep-dir x64\Debug -maxrregcount=0  --machine 64 --compile -cudart static  -g   -DCODE_ANALYSIS -DWIN32 -D_DEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /Od /Zi /RTC1 /MDd " -o x64\Debug\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" 
+         C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin>"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\bin\nvcc.exe" -gencode=arch=compute_20,code=\"sm_20,compute_20\" --use-local-env --cl-version 2013 -ccbin "C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64"  -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" -I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include"  -G   --keep-dir x64\Debug -maxrregcount=0  --machine 64 --compile -cudart static  -g   -DWIN32 -D_DEBUG -D_WINDOWS -D_USRDLL -D_WINDLL -D_UNICODE -DUNICODE -Xcompiler "/EHsc /W3 /nologo /Od /Zi /RTC1 /MDd " -o x64\Debug\CudaKernel.cu.obj "C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\CudaKernel.cu" 
          CudaKernel.cu
        ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /Zi /nologo /W3 /WX- /Od /D CODE_ANALYSIS /D WIN32 /D _DEBUG /D _WINDOWS /D _USRDLL /D _WINDLL /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc120.pdb" /Gd /TP /analyze /analyze:plugin"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\\bin\localespc.dll" /errorReport:prompt   /analyze:quiet ..\Support\Library\ofxsCore.cpp ..\Support\Library\ofxsImageEffect.cpp ..\Support\Library\ofxsInteract.cpp ..\Support\Library\ofxsLog.cpp ..\Support\Library\ofxsMultiThread.cpp ..\Support\Library\ofxsParams.cpp ..\Support\Library\ofxsProperty.cpp ..\Support\Library\ofxsPropertyValidation.cpp GoproVRPlugin.cpp OpenCLKernel.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\CL.exe /c /I"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\include" /Zi /nologo /W3 /WX- /Od /D WIN32 /D _DEBUG /D _WINDOWS /D _USRDLL /D _WINDLL /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"x64\Debug\\" /Fd"x64\Debug\vc120.pdb" /Gd /TP /errorReport:prompt ..\Support\Library\ofxsCore.cpp ..\Support\Library\ofxsImageEffect.cpp ..\Support\Library\ofxsInteract.cpp ..\Support\Library\ofxsLog.cpp ..\Support\Library\ofxsMultiThread.cpp ..\Support\Library\ofxsParams.cpp ..\Support\Library\ofxsProperty.cpp ..\Support\Library\ofxsPropertyValidation.cpp GoproVRPlugin.cpp OpenCLKernel.cpp
          OpenCLKernel.cpp
          GoproVRPlugin.cpp
      1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(28): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
      1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(31): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
      1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(38): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
      1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(41): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
-     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(109): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
-     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(110): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
-     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(111): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
-     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(112): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(172): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(173): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(186): warning C4244: 'initializing' : conversion from 'float' to 'int', possible loss of data
-     1>GoproVRPlugin.cpp(187): warning C4244: 'initializing' : conversion from 'float' to 'int', possible loss of data
-     1>GoproVRPlugin.cpp(382): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(389): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(395): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(420): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(449): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(451): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(454): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(458): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(467): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(469): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(479): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(480): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
-     1>GoproVRPlugin.cpp(494): warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
-     1>GoproVRPlugin.cpp(627): warning C4305: 'argument' : truncation from 'double' to 'float'
-     1>GoproVRPlugin.cpp(644): warning C4305: 'argument' : truncation from 'double' to 'float'
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(101): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(135): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(136): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(137): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\MathUtil.h(138): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(216): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(217): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(235): warning C4244: 'initializing' : conversion from 'float' to 'int', possible loss of data
+     1>GoproVRPlugin.cpp(236): warning C4244: 'initializing' : conversion from 'float' to 'int', possible loss of data
+     1>GoproVRPlugin.cpp(535): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(542): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(548): warning C4244: 'return' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(576): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(625): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(627): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(630): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(634): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(649): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(651): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(653): warning C4244: 'argument' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(667): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(668): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(669): warning C4244: '=' : conversion from 'double' to 'float', possible loss of data
+     1>GoproVRPlugin.cpp(683): warning C4800: 'int' : forcing value to bool 'true' or 'false' (performance warning)
+     1>GoproVRPlugin.cpp(819): warning C4305: 'argument' : truncation from 'double' to 'float'
+     1>GoproVRPlugin.cpp(862): warning C4305: 'argument' : truncation from 'double' to 'float'
+     1>GoproVRPlugin.cpp(887): warning C4305: 'argument' : truncation from 'double' to 'float'
          ofxsPropertyValidation.cpp
          ofxsProperty.cpp
          ofxsParams.cpp
@@ -65,7 +69,6 @@
      1>..\Support\Library\ofxsImageEffect.cpp(2876): warning C4101: 'e' : unreferenced local variable
      1>..\Support\Library\ofxsImageEffect.cpp(2898): warning C4101: 'e' : unreferenced local variable
          ofxsCore.cpp
-         Running Code Analysis for C/C++...
          Generating Code...
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\x86_amd64\link.exe /ERRORREPORT:PROMPT /OUT:"..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.dll" /INCREMENTAL /NOLOGO /LIBPATH:"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v7.5\lib\x64" kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib cuda.lib cudart.lib OpenCL.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.lib" /MACHINE:X64 /DLL x64\Debug\CudaKernel.cu.obj
@@ -81,29 +84,6 @@
          x64\Debug\OpenCLKernel.obj
             Creating library ..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.lib and object ..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.exp
          GainPlugin.vcxproj -> C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\Developer\OpenFX\GoproVRPlugin\..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.dll
-     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\goprovrplugin.cpp(476): warning C6011: Dereferencing NULL pointer 'rotmats'. 
-     1>c:\programdata\blackmagic design\davinci resolve\support\developer\openfx\goprovrplugin\goprovrplugin.cpp(480): warning C6011: Dereferencing NULL pointer 'fisheyes'. 
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(1736): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(2097): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(2215): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(2320): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(2349): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(2378): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(2467): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(2742): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(5045): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(5046): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(5102): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(5103): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(5110): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(5148): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(5214): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(5320): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(5378): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(6272): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(6351): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(1171): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
-     1>c:\program files\nvidia gpu computing toolkit\cuda\v7.5\include\cl\cl.hpp(1146): warning C6255: _alloca indicates failure by raising a stack overflow exception.  Consider using _malloca instead.
        PostBuildEvent:
          if not exist "..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.ofx.bundle\Contents\Resources" mkdir "..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.ofx.bundle\Contents\Resources"
          if not exist "..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.ofx.bundle\Contents\Win64" mkdir "..\..\..\..\..\..\..\Program Files\Common Files\OFX\Plugins\GoproVRPlugin.ofx.bundle\Contents\Win64"
@@ -114,4 +94,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:01:14.76
+Time Elapsed 00:00:08.97
