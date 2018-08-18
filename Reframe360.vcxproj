@@ -112,9 +112,9 @@ copy /Y "$(TargetPath)" /B "$(OutDir)Reframe360Plugin.ofx.bundle\Contents\Win64\
     </Link>
     <PostBuildEvent>
       <Message>Creating bundle...</Message>
-      <Command>if not exist "$(OutDir)GoproVRPlugin.ofx.bundle\Contents\Resources" mkdir "$(OutDir)GoproVRPlugin.ofx.bundle\Contents\Resources"
-if not exist "$(OutDir)GoproVRPlugin.ofx.bundle\Contents\Win64" mkdir "$(OutDir)GoproVRPlugin.ofx.bundle\Contents\Win64"
-copy /Y "$(TargetPath)" /B "$(OutDir)GoproVRPlugin.ofx.bundle\Contents\Win64\GoproVRPlugin.ofx" /B</Command>
+      <Command>if not exist "$(OutDir)Reframe360Plugin.ofx.bundle\Contents\Resources" mkdir "$(OutDir)Reframe360Plugin.ofx.bundle\Contents\Resources"
+if not exist "$(OutDir)Reframe360Plugin.ofx.bundle\Contents\Win64" mkdir "$(OutDir)Reframe360Plugin.ofx.bundle\Contents\Win64"
+copy /Y "$(TargetPath)" /B "$(OutDir)Reframe360Plugin.ofx.bundle\Contents\Win64\Reframe360Plugin.ofx" /B</Command>
     </PostBuildEvent>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>

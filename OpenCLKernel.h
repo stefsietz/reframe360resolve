@@ -33,6 +33,9 @@ const char *KernelSource = "\n" \
 "outuv.y = uv.y;\n" \
 "}\n" \
 "\n" \
+"outuv.x = min(max(outuv.x, 0.0f), 1.0f);\n" \
+"outuv.y = min(max(outuv.y, 0.0f), 1.0f);\n" \
+"\n" \
 "return outuv;\n" \
 "}\n" \
 "\n" \
@@ -113,13 +116,15 @@ const char *KernelSource = "\n" \
 "float b = uv.y - j;\n" \
 "int x = (int)i;\n" \
 "int y = (int)j;\n" \
+"int x1 = (x < width - 1 ? x + 1 : x);\n" \
+"int y1 = (y < height - 1 ? y + 1 : y);\n" \
 "const int indexX1Y1 = ((y * width) + x) * 4;\n" \
-"const int indexX2Y1 = ((y * width) + x + 1) * 4;\n" \
-"const int indexX1Y2 = (((y + 1) * width) + x) * 4;\n" \
-"const int indexX2Y2 = (((y + 1) * width) + x + 1) * 4;\n" \
+"const int indexX2Y1 = ((y * width) + x1) * 4;\n" \
+"const int indexX1Y2 = (((y1) * width) + x) * 4;\n" \
+"const int indexX2Y2 = (((y1) * width) + x1) * 4;\n" \
 "const int maxIndex = (width * height - 1) * 4;\n" \
 "\n" \
-"if (indexX2Y2 < maxIndex - height - 100){\n" \
+"if (indexX2Y2 < maxIndex){\n" \
 "outCol.x = (1.0 - a)*(1.0 - b)*input[indexX1Y1] + a*(1.0 - b)*input[indexX2Y1] + (1.0 - a)*b*input[indexX1Y2] + a*b*input[indexX2Y2];\n" \
 "outCol.y = (1.0 - a)*(1.0 - b)*input[indexX1Y1 + 1] + a*(1.0 - b)*input[indexX2Y1 + 1] + (1.0 - a)*b*input[indexX1Y2 + 1] + a*b*input[indexX2Y2 + 1];\n" \
 "outCol.z = (1.0 - a)*(1.0 - b)*input[indexX1Y1 + 2] + a*(1.0 - b)*input[indexX2Y1 + 2] + (1.0 - a)*b*input[indexX1Y2 + 2] + a*b*input[indexX2Y2 + 2];\n" \
