@@ -30,30 +30,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct  CameraParams {
-	float pitch = 0;
-	float yaw = 0;
-	float roll = 0;
-	float fov = 1.0;
-	float tinyplanet = 1;
-	float rectilinear = 0;
-}CameraParams;
-
-typedef struct ReframeParamSet {
-	CameraParams mainCamParams;
-
-	int activeCamera = 1;
-	int camera1 = 1;
-	int camera2 = 2;
-	float blend = 0;
-	float acceleration = 3.0f;
-
-	bool forceActiveAuxCamera = false;
-
-	CameraParams auxCamParams[20];
-
-}ReframeParamSet;
-
 class ImageScaler : public OFX::ImageProcessor
 {
 public:
@@ -77,10 +53,6 @@ private:
 	float* _rectilinear;
 	int _samples;
 	bool _bilinear;
-
-	CameraParams mainCamParams;
-
-	std::map<int, CameraParams> auxCameraParams();
 };
 
 ImageScaler::ImageScaler(OFX::ImageEffect& p_Instance)
@@ -338,12 +310,12 @@ private:
     OFX::DoubleParam* m_Fov;
 
 	OFX::IntParam* m_ActiveCamera;
-	OFX::IntParam* m_Camera1;
-	OFX::IntParam* m_Camera2;
-
 	OFX::BooleanParam* m_ShowActiveCamera;
+	OFX::PushButtonParam* m_CopyButton;
+	OFX::PushButtonParam* m_PasteButton;
+	OFX::IntParam* m_CopyValue;
 
-	OFX::DoubleParam* m_Blend;
+	OFX::IntParam* m_CameraSequence;
 	OFX::DoubleParam* m_Accel;
 
 	OFX::DoubleParam* m_Pitch1;
@@ -364,6 +336,19 @@ private:
 	OFX::IntParam* m_Samples;
 	OFX::BooleanParam* m_Bilinear;
 
+	double getNextKeyFrameTime(OFX::IntParam* param, double time);
+	double getPreviousKeyFrameTime(OFX::IntParam* param, double time);
+
+	int getPreviousCamera(OFX::IntParam* param, double time);
+	int getNextCamera(OFX::IntParam* param, double time);
+
+	double getRelativeKeyFrameAlpha(OFX::IntParam* param, double time, double offset);
+
+	bool needsInterPolation(OFX::IntParam* param, double time);
+	bool isFirstKeyFrameTimeOrEarlier(OFX::IntParam* param, double time);
+	bool isLastKeyFrameTimeOrLater(OFX::IntParam* param, double time);
+	bool isExactlyOnKeyFrame(OFX::IntParam* param, double time);
+
 	//ReframeParamSet m_ParamStruct;
 };
 
@@ -378,14 +363,14 @@ Reframe360::Reframe360(OfxImageEffectHandle p_Handle)
 	m_Roll = fetchDoubleParam("main_roll");
     m_Fov = fetchDoubleParam("main_fov");
 
-	m_ActiveCamera = fetchIntParam("active_cam");
-	m_Camera1 = fetchIntParam("cam1");
-	m_Camera2 = fetchIntParam("cam2");
-
-	m_ShowActiveCamera = fetchBooleanParam("show_active_cam");
-
-	m_Blend = fetchDoubleParam("blend");
+	m_CameraSequence = fetchIntParam("cam1");
 	m_Accel = fetchDoubleParam("accel");
+
+	m_ActiveCamera = fetchIntParam("active_cam");
+	m_ShowActiveCamera = fetchBooleanParam("show_active_cam");
+	m_CopyButton = fetchPushButtonParam("copy_button");
+	m_PasteButton = fetchPushButtonParam("paste_button");
+	m_CopyValue = fetchIntParam("copy_value");
 
 	m_Shutter = fetchDoubleParam("shutter");
 	m_Samples = fetchIntParam("samples");
@@ -459,6 +444,21 @@ void Reframe360::changedParam(const OFX::InstanceChangedArgs& p_Args, const std:
 		std::string name = ss.str();
 
 		setHiddenParam(name, activeCam, value);
+	}
+	else if (p_ParamName.find("copy_button") == 0){
+		m_CopyValue->setValue(m_ActiveCamera->getValue());
+	}
+	else if (p_ParamName.find("paste_button") == 0){
+		int activeCam = m_ActiveCamera->getValue();
+		activeCam--;
+		int copyCam = m_CopyValue->getValue();
+		copyCam--;
+		m_Pitch1->setValue(m_Pitch2[copyCam]->getValue());
+		m_Yaw1->setValue(m_Yaw2[copyCam]->getValue());
+		m_Roll1->setValue(m_Roll2[copyCam]->getValue());
+		m_Fov1->setValue(m_Fov2[copyCam]->getValue());
+		m_Tinyplanet1->setValue(m_Tinyplanet2[copyCam]->getValue());
+		m_Recti1->setValue(m_Recti2[copyCam]->getValue());
 	}
 }
 
@@ -538,8 +538,9 @@ void Reframe360::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 	int bilinear = m_Bilinear->getValueAtTime(p_Args.time);
 
 	int activeCam = m_ActiveCamera->getValueAtTime(p_Args.time)-1;
-	int cam1 = m_Camera1->getValueAtTime(p_Args.time)-1;
-	int cam2 = m_Camera2->getValueAtTime(p_Args.time)-1;
+
+	int cam1 = getPreviousCamera(m_CameraSequence, p_Args.time)-1;
+	int cam2 = getNextCamera(m_CameraSequence, p_Args.time)-1;
 
 	bool showActiveCam = m_ShowActiveCamera->getValueAtTime(p_Args.time);
 
@@ -565,7 +566,6 @@ void Reframe360::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 		roll = interpParam(m_Roll, p_Args, offset);
 		fov = interpParam(m_Fov, p_Args, offset);
 
-		blend = interpParam(m_Blend, p_Args, offset);
 		accel = interpParam(m_Accel, p_Args, offset);
 
 		pitch1 = interpParam(m_Pitch2[cam1], p_Args, offset);
@@ -582,6 +582,11 @@ void Reframe360::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 		tinyplanet2 = interpParam(m_Tinyplanet2[cam2], p_Args, offset);
 		recti2 = interpParam(m_Recti2[cam2], p_Args, offset);
 
+		double camAlpha = 0;
+		if (cam1 != cam2)
+			camAlpha = getRelativeKeyFrameAlpha(m_CameraSequence, p_Args.time, offset);
+
+		blend = camAlpha;
 		if (blend < 0.5){
 			blend = fitRange(blend, 0, 0.5, 0, 1);
 			blend = std::pow(blend, accel);
@@ -741,6 +746,22 @@ static BooleanParamDescriptor* defineBooleanParam(OFX::ImageEffectDescriptor& p_
 
 	return param;
 }
+#
+static PushButtonParamDescriptor* defineButtonParam(OFX::ImageEffectDescriptor& p_Desc, const std::string& p_Name, const std::string& p_Label,
+	const std::string& p_Hint, GroupParamDescriptor* p_Parent)
+{
+	PushButtonParamDescriptor* param = p_Desc.definePushButtonParam(p_Name);
+	param->setLabels(p_Label, p_Label, p_Label);
+	param->setScriptName(p_Name);
+	param->setHint(p_Hint);
+
+	if (p_Parent)
+	{
+		param->setParent(*p_Parent);
+	}
+
+	return param;
+}
 
 
 void Reframe360Factory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OFX::ContextEnum /*p_Context*/)
@@ -780,20 +801,14 @@ void Reframe360Factory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
     param = defineParam(p_Desc, "main_fov", "Field of View", "Camera field of view", camera1ParamsGroup, 0.15, 5, 1);
     page->addChild(*param);
 
-	GroupParamDescriptor* blendGroup = p_Desc.defineGroupParam("blendParams");
-	blendGroup->setHint("Blend Camera Parameters");
-	blendGroup->setLabels("Blend Camera Parameters", "Blend Camera Parameters", "Blend Camera Parameters");
+	GroupParamDescriptor* animGroup = p_Desc.defineGroupParam("animParams");
+	animGroup->setHint("Camera Animation Parameters");
+	animGroup->setLabels("Camera Animation Parameters", "Camera Animation Parameters", "Camera Animation Parameters");
 
-	IntParamDescriptor* intParam = defineIntParam(p_Desc, "cam1", "Camera 1", "Camera 1", blendGroup, 1, MAX_CAM_NUM, 1, 1, 20);
-	page->addChild(*intParam);
-
-	intParam = defineIntParam(p_Desc, "cam2", "Camera 2", "Camera 2", blendGroup, 1, MAX_CAM_NUM, 2, 1, 20);
-	page->addChild(*intParam);
-
-	param = defineParam(p_Desc, "blend", "Blend", "Blend Cameras", blendGroup, 0, 1, 0);
+	IntParamDescriptor* intParam = defineIntParam(p_Desc, "cam1", "Camera Sequence", "Camera Sequence", animGroup, 1, 20, 1);
 	page->addChild(*param);
 
-	param = defineParam(p_Desc, "accel", "Blend Acceleration", "Blend Acceleration", blendGroup, 1, 20, 3, 0.5, 20);
+	param = defineParam(p_Desc, "accel", "Blend Acceleration", "Blend Acceleration", animGroup, 1, 20, 3, 0.5, 20);
 	page->addChild(*param);
 
 	GroupParamDescriptor* cameraSelctionParamsGroup = p_Desc.defineGroupParam("cameraSelectionParams");
@@ -809,6 +824,16 @@ void Reframe360Factory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
 	GroupParamDescriptor* camera2ParamsGroup = p_Desc.defineGroupParam("auxCameraParams");
 	camera2ParamsGroup->setHint("Aux Camera Parameters");
 	camera2ParamsGroup->setLabels("Aux Camera Parameters", "Aux Camera Parameters", "Aux Camera Parameters");
+
+	PushButtonParamDescriptor* buttonParam = defineButtonParam(p_Desc, "copy_button", "Copy Camera", "Copy Camera", camera2ParamsGroup);
+	page->addChild(*buttonParam);
+
+	buttonParam = defineButtonParam(p_Desc, "paste_button", "Paste Camera", "Paste Camera", camera2ParamsGroup);
+	page->addChild(*buttonParam);
+
+	intParam = defineIntParam(p_Desc, "copy_value", "", "", camera2ParamsGroup, 1, 20, 1);
+	intParam->setIsSecret(true);
+	page->addChild(*intParam);
 
 	// Make the camera 2 params
 	param = defineParam(p_Desc, "aux_pitch", "Pitch", "Up/down camera rotation", camera2ParamsGroup, -90, 90, 0);
@@ -914,5 +939,122 @@ void Reframe360::setHiddenParam(std::string name, int cam, double value){
 	else if (name.find("recti") != std::string::npos){
 		m_Recti2[cam]->setValue(value);
 	}
+}
+
+bool Reframe360::needsInterPolation(OFX::IntParam* param, double time) {
+	if (isFirstKeyFrameTimeOrEarlier(param, time)) {
+		return false;
+	}
+	else if (isLastKeyFrameTimeOrLater(param, time)) {
+		return false;
+	}
+	else if (isExactlyOnKeyFrame(param, time)) {
+		return false;
+	}
+	else {
+		return true;
+	}
+}
+
+bool Reframe360::isExactlyOnKeyFrame(OFX::IntParam* param, double time) {
+	double keyTime = 0;
+	int keyIndex = param->getKeyIndex(time, eKeySearchNear);
+	if (keyIndex == -1) {
+		return false;
+	}
+	else{
+		keyTime = param->getKeyTime(keyIndex);
+		if (keyTime == time)
+			return true;
+		else
+			return false;
+	}
+}
+
+bool Reframe360::isFirstKeyFrameTimeOrEarlier(OFX::IntParam* param, double time) {
+	int keyIndex = param->getKeyIndex(time, eKeySearchBackwards);
+	if (keyIndex == -1)
+		return true;
+	else
+		return false;
+}
+
+bool Reframe360::isLastKeyFrameTimeOrLater(OFX::IntParam* param, double time) {
+	int keyIndex = param->getKeyIndex(time, eKeySearchForwards);
+	if (keyIndex == -1)
+		return true;
+	else
+		return false;
+}
+
+double Reframe360::getPreviousKeyFrameTime(OFX::IntParam* param, double time) {
+	int keyIndex = param->getKeyIndex(time, eKeySearchBackwards);
+;	return param->getKeyTime(keyIndex);
+}
+
+double Reframe360::getNextKeyFrameTime(OFX::IntParam* param, double time) {
+	int keyIndex = param->getKeyIndex(time, eKeySearchForwards);
+	;	return param->getKeyTime(keyIndex);
+}
+
+double Reframe360::getRelativeKeyFrameAlpha(OFX::IntParam* param, double time, double offset) {
+	double currentTime = time;
+
+	double offsetTime = currentTime +  offset;
+
+	double prevTime = getPreviousKeyFrameTime(param, currentTime);
+	double nextTime = getNextKeyFrameTime(param, currentTime);
+	double prevTimeOffset = getPreviousKeyFrameTime(param, offsetTime);
+	double nextTimeOffset = getNextKeyFrameTime(param, offsetTime);
+
+	if (prevTime == prevTimeOffset && nextTime == nextTimeOffset) {
+		currentTime = offsetTime;
+	}
+
+	double totalDiff = nextTime - prevTime;
+	double prevDiff = currentTime - prevTime;
+
+	double alpha = prevDiff / totalDiff;
+
+	return (float)alpha;
+}
+
+int Reframe360::getPreviousCamera(OFX::IntParam* param, double time) {
+
+	int outValue = 0;
+
+	double queryTime = time;
+
+	if (needsInterPolation(param, time)) {
+		queryTime = getPreviousKeyFrameTime(param, time);
+	}
+	
+	outValue = param->getValueAtTime(queryTime);
+
+	if (outValue == 0) {
+		param->getValueAtTime(time);
+	}
+
+	return  outValue;
+
+}
+
+int Reframe360::getNextCamera(OFX::IntParam* param, double time) {
+
+	int outValue = 0;
+
+	double queryTime = time;
+
+	if (needsInterPolation(param, time)) {
+		queryTime = getNextKeyFrameTime(param, time);
+	}
+
+	outValue = param->getValueAtTime(queryTime);
+
+	if (outValue == 0) {
+		param->getValueAtTime(time);
+	}
+
+	return  outValue;
 }
 
