@@ -1,2 +1,4 @@
 *.exr
 *.hdr
+*.o
+Reframe360.ofx
