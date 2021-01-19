@@ -9,7 +9,7 @@ with open(sys.argv[1]) as cpp_file:
     cl = "const char *KernelSource = \"\\n\" \\\n"
     with open(sys.argv[2]) as cl_file:
         for line in cl_file.readlines():
-            if(line.strip() is not "\n"):
+            if(line.strip() != "\n"):
                 cl += '\"'+line.strip() + '\\n\" \\\n'
     cl += "\"\\n\";"
 

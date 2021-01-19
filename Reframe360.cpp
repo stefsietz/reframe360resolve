@@ -183,9 +183,9 @@ void ImageScaler::multiThreadProcessImages(OfxRectI p_ProcWindow)
 
 			for (int x = p_ProcWindow.x1; x < p_ProcWindow.x2; ++x)
 			{
-				vec2 uv = { (float)x / width, (float)y / height };
+				vec2 uv = vec2((float)x / width, (float)y / height );
 
-				vec3 dir = { 0, 0, 0 };
+				vec3 dir = vec3( 0, 0, 0 );
 				dir.x = (uv.x - 0.5)*2.0;
 				dir.y = (uv.y - 0.5)*2.0;
 				dir.y /= aspect;
@@ -223,12 +223,12 @@ void ImageScaler::multiThreadProcessImages(OfxRectI p_ProcWindow)
 							interpCol = linInterpCol(iuv, _srcImg, p_ProcWindow, width, height);
 						}
 						else {
-							interpCol = { srcPix[0], srcPix[1], srcPix[2], srcPix[3] };
+							interpCol = vec4( srcPix[0], srcPix[1], srcPix[2], srcPix[3] );
 						}
 					}
 					else
 					{
-						interpCol = { 0, 0, 0, 1.0 };
+						interpCol = vec4( 0, 0, 0, 1.0 );
 					}
 
 					if (i == 0) {
@@ -398,13 +398,13 @@ Reframe360::Reframe360(OfxImageEffectHandle p_Handle)
 
 void Reframe360::render(const OFX::RenderArguments& p_Args)
 {
-#ifdef BETA_FAIL
+/*#ifdef BETA_FAIL
 	time_t time_ = time(NULL);
 
 	if (time_ > BETA_FAIL_TIME) {
 		return;
 	}
-#endif
+#endif*/
     if ((m_DstClip->getPixelDepth() == OFX::eBitDepthFloat) && (m_DstClip->getPixelComponents() == OFX::ePixelComponentRGBA))
     {
         ImageScaler imageScaler(*this);
@@ -630,9 +630,9 @@ void Reframe360::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 		memcpy(&(rotmats[i * 9]), rotMat, sizeof(float) * 9);
 		free(rotMat);
 
-		fovs[i] = fov;
-		tinyplanets[i] = tinyplanet1;
-		rectilinears[i] = recti1;
+		fovs[i] = static_cast<float>(fov);
+		tinyplanets[i] = static_cast<float>(tinyplanet1);
+		rectilinears[i] = static_cast<float>(recti1);
 	}
     
     // Set the images

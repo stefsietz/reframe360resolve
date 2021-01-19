@@ -1,4 +1,4 @@
-#include <glm/vec2.hpp> // vec2, bvec2, dvec2, ivec2 and uvec2
+/*#include <glm/vec2.hpp> // vec2, bvec2, dvec2, ivec2 and uvec2
 #include <glm/vec3.hpp> // vec3, bvec3, dvec3, ivec3 and uvec3
 #include <glm/vec4.hpp> // vec4, bvec4, dvec4, ivec4 and uvec4
 #include <glm/mat2x2.hpp> // mat2, dmat2
@@ -18,6 +18,9 @@
 #include <glm/packing.hpp> // all the GLSL packing functions
 #include <glm/trigonometric.hpp> // all the GLSL trigonometric functions
 #include <glm/vector_relational.hpp> // all the GLSL vector relational functions
+*/
+
+#include <glm/glm.hpp>
 
 using namespace glm;
 
