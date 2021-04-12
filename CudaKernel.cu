@@ -11,7 +11,7 @@ __device__ float3 matMul(const float3 r012, const float3 r345, const float3 r678
 }
 
 __device__ float2 repairUv(float2 uv){
-	float2 outuv = {0, 0};
+	float2 outuv;
 
 	if(uv.x<0) {
 		outuv.x = 1.0 + uv.x;
@@ -55,10 +55,13 @@ __device__ float2 polarCoord(float3 dir) {
 
 
 __device__ float3 fisheyeDir(float3 dir, const float3 r012, const float3 r345, const float3 r678) {
-	
+
+	if (dir.x == 0 && dir.y == 0)
+		return matMul(r012, r345, r678, dir);
+
 	dir.x = dir.x / dir.z;
 	dir.y = dir.y / dir.z;
-	dir.z = dir.z / dir.z;
+	dir.z = 1;
 	
 	float2 uv;
 	uv.x = dir.x;
@@ -80,7 +83,10 @@ __device__ float3 fisheyeDir(float3 dir, const float3 r012, const float3 r345, c
 }
 
 __device__ float3 tinyPlanetSph(float3 uv) {
-	float3 sph;
+	if (uv.x == 0 && uv.y == 0)
+		return uv;
+
+    float3 sph;
 	float2 uvxy;
 	uvxy.x = uv.x/uv.z;
 	uvxy.y = uv.y/uv.z;
@@ -152,8 +158,8 @@ __global__ void GainAdjustKernel(int p_Width, int p_Height, float* p_Fov, float*
 		   float aspect = (float)p_Width / (float)p_Height;
 
 		   float3 dir = { 0, 0, 0 };
-		   dir.x = (uv.x - 0.5)*2.0;
-		   dir.y = (uv.y - 0.5)*2.0;
+		   dir.x = (uv.x * 2) - 1;
+		   dir.y = (uv.y * 2) - 1;
 		   dir.y /= aspect;
 		   dir.z = fov;
 
@@ -170,7 +176,6 @@ __global__ void GainAdjustKernel(int p_Width, int p_Height, float* p_Fov, float*
 		   rectdir = normalize(rectdir);
 		   dir = lerp(fisheyeDir(dir, r012, r345, r678), tinyplanet, p_Tinyplanet[i]);
 		   dir = lerp(dir, rectdir, p_Rectilinear[i]);
-
 
 		   float2 iuv = polarCoord(dir);
 		   iuv = repairUv(iuv);

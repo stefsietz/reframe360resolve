@@ -186,8 +186,8 @@ void ImageScaler::multiThreadProcessImages(OfxRectI p_ProcWindow)
 				vec2 uv = vec2((float)x / width, (float)y / height );
 
 				vec3 dir = vec3( 0, 0, 0 );
-				dir.x = (uv.x - 0.5)*2.0;
-				dir.y = (uv.y - 0.5)*2.0;
+				dir.x = (uv.x * 2) - 1;
+				dir.y = (uv.y * 2) - 1;
 				dir.y /= aspect;
 				dir.z = fov;
 
@@ -205,11 +205,11 @@ void ImageScaler::multiThreadProcessImages(OfxRectI p_ProcWindow)
 				vec2 iuv = polarCoord(dir);
 				iuv = repairUv(iuv);
 
-				int x_new = p_ProcWindow.x1 + iuv.x * (width - 1);
-				int y_new = p_ProcWindow.y1 + iuv.y * (height - 1);
-
 				iuv.x *= (width - 1);
 				iuv.y *= (height - 1);
+
+				int x_new = p_ProcWindow.x1 + (int)iuv.x;
+				int y_new = p_ProcWindow.y1 + (int)iuv.y;
 
 				if ((x_new < width) && (y_new < height))
 				{
@@ -493,20 +493,20 @@ void Reframe360::setEnabledness()
 
 static float interpParam(OFX::DoubleParam* param, const OFX::RenderArguments& p_Args, float offset){
 	if (offset == 0){
-		return param->getValueAtTime(p_Args.time);
+		return (float)param->getValueAtTime(p_Args.time);
 	}
 	else if (offset < 0) {
 		offset = -offset;
 		float floor = std::floor(offset);
 		float frac = offset - floor;
 
-		return param->getValueAtTime(p_Args.time - (floor + 1))*frac + param->getValueAtTime(p_Args.time - floor)*(1 - frac);
+		return (float)param->getValueAtTime(p_Args.time - (floor + 1))*frac + (float)param->getValueAtTime(p_Args.time - floor)*(1 - frac);
 	}
 	else {
 		float floor = std::floor(offset);
 		float frac = offset - floor;
 
-		return param->getValueAtTime(p_Args.time + (floor + 1))*frac + param->getValueAtTime(p_Args.time + floor)*(1 - frac);
+		return (float)param->getValueAtTime(p_Args.time + (floor + 1))*frac + (float)param->getValueAtTime(p_Args.time + floor)*(1 - frac);
 	}
 }
 
@@ -528,13 +528,13 @@ void Reframe360::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
         OFX::throwSuiteStatusException(kOfxStatErrValue);
     }
 
-	double pitch = 0.0, roll = 0.0, yaw = 0.0, fov = 1.0,
-		pitch1 = 1.0, yaw1 = 1.0, roll1 = 0.0, fov1 = 1.0, tinyplanet1 = 1.0, recti1 = 0.0,
-		pitch2 = 1.0, yaw2 = 1.0, roll2 = 0.0, fov2 = 1.0, tinyplanet2 = 1.0, recti2 = 0.0,
-		blend = 0.0, accel = 0.5;
+	float pitch = 0.0f, roll = 0.0f, yaw = 0.0f, fov = 1.0f,
+		pitch1 = 1.0f, yaw1 = 1.0f, roll1 = 0.0f, fov1 = 1.0f, tinyplanet1 = 1.0f, recti1 = 0.0f,
+		pitch2 = 1.0f, yaw2 = 1.0f, roll2 = 0.0f, fov2 = 1.0f, tinyplanet2 = 1.0f, recti2 = 0.0f,
+		blend = 0.0f, accel = 0.5f;
 
 	int mb_samples = (int)m_Samples->getValueAtTime(p_Args.time);
-	float mb_shutter = m_Shutter->getValueAtTime(p_Args.time) * 0.5;
+	float mb_shutter = (float)m_Shutter->getValueAtTime(p_Args.time) * 0.5f;
 	int bilinear = m_Bilinear->getValueAtTime(p_Args.time);
 
 	int activeCam = m_ActiveCamera->getValueAtTime(p_Args.time)-1;
@@ -582,9 +582,9 @@ void Reframe360::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 		tinyplanet2 = interpParam(m_Tinyplanet2[cam2], p_Args, offset);
 		recti2 = interpParam(m_Recti2[cam2], p_Args, offset);
 
-		double camAlpha = 0;
+		float camAlpha = 0;
 		if (cam1 != cam2)
-			camAlpha = getRelativeKeyFrameAlpha(m_CameraSequence, p_Args.time, offset);
+			camAlpha = (float)getRelativeKeyFrameAlpha(m_CameraSequence, p_Args.time, offset);
 
 		blend = camAlpha;
 		if (blend < 0.5){
@@ -594,9 +594,9 @@ void Reframe360::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 		}
 		else{
 			blend = fitRange(blend, 0.5, 1.0, 0, 1);
-			blend = 1.0 - blend;
+			blend = 1.0f - blend;
 			blend = std::pow(blend, accel);
-			blend = 1.0 - blend;
+			blend = 1.0f - blend;
 			blend = fitRange(blend, 0, 1, 0.5, 1.0);
 		}
 
@@ -604,19 +604,19 @@ void Reframe360::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 			blend = 0;
 		}
 
-		pitch = (pitch1 * (1.0 - blend) + pitch2 * blend) + pitch;
-		yaw = (yaw1 * (1.0 - blend) + yaw2 * blend) + yaw;
-		roll = (roll1 * (1.0 - blend) + roll2 * blend) + roll;
-		fov = (fov1 * (1.0 - blend) + fov2 * blend) * fov;
-		tinyplanet1 = (tinyplanet1 * (1.0 - blend) + tinyplanet2 * blend);
-		recti1 = (recti1 * (1.0 - blend) + recti2 * blend);
+		pitch = (pitch1 * (1.0f - blend) + pitch2 * blend) + pitch;
+		yaw = (yaw1 * (1.0f - blend) + yaw2 * blend) + yaw;
+		roll = (roll1 * (1.0f - blend) + roll2 * blend) + roll;
+		fov = (fov1 * (1.0f - blend) + fov2 * blend) * fov;
+		tinyplanet1 = (tinyplanet1 * (1.0f - blend) + tinyplanet2 * blend);
+		recti1 = (recti1 * (1.0f - blend) + recti2 * blend);
 
 		float* pitchMat = (float*)calloc(9, sizeof(float));
-		pitchMatrix(-pitch / 180 * M_PI, &pitchMat);
+		pitchMatrix(-pitch / 180 * (float)M_PI, &pitchMat);
 		float* yawMat = (float*)calloc(9, sizeof(float));
-		yawMatrix(yaw / 180 * M_PI, &yawMat);
+		yawMatrix(yaw / 180 * (float)M_PI, &yawMat);
 		float* rollMat = (float*)calloc(9, sizeof(float));
-		rollMatrix(-roll / 180 * M_PI, &rollMat);
+		rollMatrix(-roll / 180 * (float)M_PI, &rollMat);
 
 		float* pitchYawMat = (float*)calloc(9, sizeof(float));
 		float* rotMat = (float*)calloc(9, sizeof(float));
@@ -798,7 +798,7 @@ void Reframe360Factory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
 	param = defineParam(p_Desc, "main_roll", "Roll", "Camera Roll", camera1ParamsGroup, -180, 180, 0);
 	page->addChild(*param);
 
-    param = defineParam(p_Desc, "main_fov", "Field of View", "Camera field of view", camera1ParamsGroup, 0.15, 5, 1);
+    param = defineParam(p_Desc, "main_fov", "Field of View", "Camera field of view", camera1ParamsGroup, 0.15f, 5, 1);
     page->addChild(*param);
 
 	GroupParamDescriptor* animGroup = p_Desc.defineGroupParam("animParams");
@@ -845,7 +845,7 @@ void Reframe360Factory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
 	param = defineParam(p_Desc, "aux_roll", "Roll", "Camera Roll", camera2ParamsGroup, -180, 180, 0);
 	page->addChild(*param);
 
-	param = defineParam(p_Desc, "aux_fov", "Field of View", "Camera field of view", camera2ParamsGroup, 0.15, 5, 1);
+	param = defineParam(p_Desc, "aux_fov", "Field of View", "Camera field of view", camera2ParamsGroup, 0.15f, 5, 1);
 	page->addChild(*param);
 
 	param = defineParam(p_Desc, "aux_recti", "Rectilinear Projection", "Rectilinear Projection", camera2ParamsGroup, 0, 1, 0, 0, 1);
@@ -870,7 +870,7 @@ void Reframe360Factory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
 		param = defineParam(p_Desc, paramIdForCam("aux_roll", i), "Roll", "Camera Roll", hiddenCameraParamsGroup, -180, 180, 0);
 		page->addChild(*param);
 
-		param = defineParam(p_Desc, paramIdForCam("aux_fov", i), "Field of View", "Camera field of view", hiddenCameraParamsGroup, 0.15, 5, 1);
+		param = defineParam(p_Desc, paramIdForCam("aux_fov", i), "Field of View", "Camera field of view", hiddenCameraParamsGroup, 0.15f, 5, 1);
 		page->addChild(*param);
 
 		param = defineParam(p_Desc, paramIdForCam("aux_tiny", i), "Tiny Planet", "Blend between standard Fisheye projection and Tiny Planet Projection", hiddenCameraParamsGroup, 0, 1, 0, 0, 1);

@@ -25,23 +25,23 @@
 using namespace glm;
 
 static vec2 repairUv(vec2 uv){
-	vec2 outuv = { 0, 0 };
+	vec2 outuv;
 
 	if (uv.x<0) {
-		outuv.x = 1.0 + uv.x;
+		outuv.x = 1.0f + uv.x;
 	}
 	else if (uv.x > 1.0){
-		outuv.x = uv.x - 1.0;
+		outuv.x = uv.x - 1.0f;
 	}
 	else {
 		outuv.x = uv.x;
 	}
 
 	if (uv.y<0) {
-		outuv.y = 1.0 + uv.y;
+		outuv.y = 1.0f + uv.y;
 	}
-	else if (uv.y > 1.0){
-		outuv.y = uv.y - 1.0;
+	else if (uv.y > 1.0f){
+		outuv.y = uv.y - 1.0f;
 	}
 	else {
 		outuv.y = uv.y;
@@ -101,7 +101,7 @@ vec3 tinyPlanetSph(vec3 uv) {
 
 	float u = length(uvxy);
 	float alpha = atan2(2.0f, u);
-	float phi = M_PI - 2 * alpha;
+	float phi = (float)M_PI - 2 * alpha;
 	float z = cos(phi);
 	float x = sin(phi);
 
@@ -135,10 +135,10 @@ inline vec4 linInterpCol(vec2 uv, OFX::Image *image, OfxRectI procWindow, int wi
 	const int maxIndex = (width * height - 1) * 4;
 
 	if ((x)* (y) < maxIndex){
-		outCol.x = (1.0 - a)*(1.0 - b)*indexX1Y1[0] + a*(1.0 - b)*indexX2Y1[0] + (1.0 - a)*b*indexX1Y2[0] + a*b*indexX2Y2[0];
-		outCol.y = (1.0 - a)*(1.0 - b)*indexX1Y1[1] + a*(1.0 - b)*indexX2Y1[1] + (1.0 - a)*b*indexX1Y2[1] + a*b*indexX2Y2[1];
-		outCol.z = (1.0 - a)*(1.0 - b)*indexX1Y1[2] + a*(1.0 - b)*indexX2Y1[2] + (1.0 - a)*b*indexX1Y2[2] + a*b*indexX2Y2[2];
-		outCol.w = (1.0 - a)*(1.0 - b)*indexX1Y1[3] + a*(1.0 - b)*indexX2Y1[3] + (1.0 - a)*b*indexX1Y2[3] + a*b*indexX2Y2[3];
+		outCol.x = (1.0f - a)*(1.0f - b)*indexX1Y1[0] + a*(1.0f - b)*indexX2Y1[0] + (1.0f - a)*b*indexX1Y2[0] + a*b*indexX2Y2[0];
+		outCol.y = (1.0f - a)*(1.0f - b)*indexX1Y1[1] + a*(1.0f - b)*indexX2Y1[1] + (1.0f - a)*b*indexX1Y2[1] + a*b*indexX2Y2[1];
+		outCol.z = (1.0f - a)*(1.0f - b)*indexX1Y1[2] + a*(1.0f - b)*indexX2Y1[2] + (1.0f - a)*b*indexX1Y2[2] + a*b*indexX2Y2[2];
+		outCol.w = (1.0f - a)*(1.0f - b)*indexX1Y1[3] + a*(1.0f - b)*indexX2Y1[3] + (1.0f - a)*b*indexX1Y2[3] + a*b*indexX2Y2[3];
 	}
 	else {
 		outCol.x = indexX1Y1[0];
