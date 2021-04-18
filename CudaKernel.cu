@@ -58,7 +58,7 @@ __device__ float3 fisheyeDir(float3 dir, const float3 r012, const float3 r345, c
 
 	if (dir.x == 0 && dir.y == 0)
 		return matMul(r012, r345, r678, dir);
-
+		
 	dir.x = dir.x / dir.z;
 	dir.y = dir.y / dir.z;
 	dir.z = 1;

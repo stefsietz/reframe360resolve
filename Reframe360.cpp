@@ -296,6 +296,9 @@ public:
 
 	void setHiddenParam(std::string name, int cam, double value);
 
+    float ApplyBlendCurve(float blend, const OFX::RenderArguments& render_arguments, float offset) const;
+    float InterpBlendAlpha(float cam_alpha, const OFX::RenderArguments& p_Args, float offset) const;
+
     /* Set up and run a processor */
     void setupAndProcess(ImageScaler &p_ImageScaler, const OFX::RenderArguments& p_Args);
 
@@ -316,6 +319,7 @@ private:
 	OFX::IntParam* m_CopyValue;
 
 	OFX::IntParam* m_CameraSequence;
+	OFX::ChoiceParam* m_BlendCurve;
 	OFX::DoubleParam* m_Accel;
 
 	OFX::DoubleParam* m_Pitch1;
@@ -364,6 +368,7 @@ Reframe360::Reframe360(OfxImageEffectHandle p_Handle)
     m_Fov = fetchDoubleParam("main_fov");
 
 	m_CameraSequence = fetchIntParam("cam1");
+	m_BlendCurve = fetchChoiceParam("blend_curve");
 	m_Accel = fetchDoubleParam("accel");
 
 	m_ActiveCamera = fetchIntParam("active_cam");
@@ -482,6 +487,7 @@ void Reframe360::setEnabledness()
 	m_Recti->setEnabled(enable);
 
 	m_Blend->setEnabled(enable);
+	m_BlendCurve->setEnabled(enable);
 	m_Accel->setEnabled(enable);
 
 	m_Pitch2->setEnabled(enable);
@@ -531,7 +537,7 @@ void Reframe360::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 	float pitch = 0.0f, roll = 0.0f, yaw = 0.0f, fov = 1.0f,
 		pitch1 = 1.0f, yaw1 = 1.0f, roll1 = 0.0f, fov1 = 1.0f, tinyplanet1 = 1.0f, recti1 = 0.0f,
 		pitch2 = 1.0f, yaw2 = 1.0f, roll2 = 0.0f, fov2 = 1.0f, tinyplanet2 = 1.0f, recti2 = 0.0f,
-		blend = 0.0f, accel = 0.5f;
+		blend = 0.0f;
 
 	int mb_samples = (int)m_Samples->getValueAtTime(p_Args.time);
 	float mb_shutter = (float)m_Shutter->getValueAtTime(p_Args.time) * 0.5f;
@@ -566,8 +572,6 @@ void Reframe360::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 		roll = interpParam(m_Roll, p_Args, offset);
 		fov = interpParam(m_Fov, p_Args, offset);
 
-		accel = interpParam(m_Accel, p_Args, offset);
-
 		pitch1 = interpParam(m_Pitch2[cam1], p_Args, offset);
 		yaw1 = interpParam(m_Yaw2[cam1], p_Args, offset);
 		roll1 = interpParam(m_Roll2[cam1], p_Args, offset);
@@ -586,22 +590,12 @@ void Reframe360::setupAndProcess(ImageScaler& p_ImageScaler, const OFX::RenderAr
 		if (cam1 != cam2)
 			camAlpha = (float)getRelativeKeyFrameAlpha(m_CameraSequence, p_Args.time, offset);
 
-		blend = camAlpha;
-		if (blend < 0.5){
-			blend = fitRange(blend, 0, 0.5, 0, 1);
-			blend = std::pow(blend, accel);
-			blend = fitRange(blend, 0, 1, 0, 0.5);
-		}
-		else{
-			blend = fitRange(blend, 0.5, 1.0, 0, 1);
-			blend = 1.0f - blend;
-			blend = std::pow(blend, accel);
-			blend = 1.0f - blend;
-			blend = fitRange(blend, 0, 1, 0.5, 1.0);
-		}
-
 		if (showActiveCam) {
 			blend = 0;
+		}
+		else
+		{
+			blend = InterpBlendAlpha(camAlpha, p_Args, offset);
 		}
 
 		pitch = (pitch1 * (1.0f - blend) + pitch2 * blend) + pitch;
@@ -711,6 +705,27 @@ static DoubleParamDescriptor* defineParam(OFX::ImageEffectDescriptor& p_Desc, co
     return param;
 }
 
+static DoubleParamDescriptor* defineAngleParam(OFX::ImageEffectDescriptor& p_Desc, const std::string& p_Name, const std::string& p_Label,
+	const std::string& p_Hint, GroupParamDescriptor* p_Parent, float min, float max, float default, float hardmin = INT_MIN, float hardmax = INT_MAX)
+{
+	DoubleParamDescriptor* param = p_Desc.defineDoubleParam(p_Name);
+	param->setLabels(p_Label, p_Label, p_Label);
+	param->setScriptName(p_Name);
+	param->setHint(p_Hint);
+	param->setDefault(default);
+	param->setRange(hardmin, hardmax);
+	param->setIncrement(0.1);
+	param->setDisplayRange(min, max);
+	param->setDoubleType(eDoubleTypeAngle);
+
+	if (p_Parent)
+	{
+		param->setParent(*p_Parent);
+	}
+
+	return param;
+}
+
 static IntParamDescriptor* defineIntParam(OFX::ImageEffectDescriptor& p_Desc, const std::string& p_Name, const std::string& p_Label,
 	const std::string& p_Hint, GroupParamDescriptor* p_Parent, int min, int max, int default, int hardmin = INT_MIN, int hardmax = INT_MAX)
 {
@@ -721,6 +736,31 @@ static IntParamDescriptor* defineIntParam(OFX::ImageEffectDescriptor& p_Desc, co
 	param->setDefault(default);
 	param->setRange(hardmin, hardmax);
 	param->setDisplayRange(min, max);
+
+	if (p_Parent)
+	{
+		param->setParent(*p_Parent);
+	}
+
+	return param;
+}
+
+static ChoiceParamDescriptor* defineChoiceParam(OFX::ImageEffectDescriptor& p_Desc, const std::string& p_Name, const std::string& p_Label,
+	const std::string& p_Hint, GroupParamDescriptor* p_Parent, int default, std::string p_ChoiceLabels[], int choiceCount)
+{
+	ChoiceParamDescriptor* param = p_Desc.defineChoiceParam(p_Name);
+
+	param->setLabels(p_Label, p_Label, p_Label);
+	param->setScriptName(p_Name);
+	param->setHint(p_Hint);
+	param->setDefault(default);
+
+    for (int i = 0; i < choiceCount; ++i)
+	{
+		auto choice = p_ChoiceLabels[i];
+
+		param->appendOption(choice, choice);
+	}
 
 	if (p_Parent)
 	{
@@ -789,13 +829,13 @@ void Reframe360Factory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
 
 
     // Make the camera 1 params
-	DoubleParamDescriptor* param = defineParam(p_Desc, "main_pitch", "Pitch", "Up/down camera rotation", camera1ParamsGroup, -90, 90, 0);
+	DoubleParamDescriptor* param = defineAngleParam(p_Desc, "main_pitch", "Pitch", "Up/down camera rotation", camera1ParamsGroup, -90, 90, 0);
     page->addChild(*param);
 
-    param = defineParam(p_Desc, "main_yaw", "Yaw", "Left/right camera rotation", camera1ParamsGroup, -180, 180, 0);
+    param = defineAngleParam(p_Desc, "main_yaw", "Yaw", "Left/right camera rotation", camera1ParamsGroup, -180, 180, 0);
     page->addChild(*param);
 
-	param = defineParam(p_Desc, "main_roll", "Roll", "Camera Roll", camera1ParamsGroup, -180, 180, 0);
+	param = defineAngleParam(p_Desc, "main_roll", "Roll", "Camera Roll", camera1ParamsGroup, -180, 180, 0);
 	page->addChild(*param);
 
     param = defineParam(p_Desc, "main_fov", "Field of View", "Camera field of view", camera1ParamsGroup, 0.15f, 5, 1);
@@ -806,9 +846,13 @@ void Reframe360Factory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
 	animGroup->setLabels("Camera Animation Parameters", "Camera Animation Parameters", "Camera Animation Parameters");
 
 	IntParamDescriptor* intParam = defineIntParam(p_Desc, "cam1", "Camera Sequence", "Camera Sequence", animGroup, 1, 20, 1);
-	page->addChild(*param);
+	page->addChild(*intParam);
 
-	param = defineParam(p_Desc, "accel", "Blend Acceleration", "Blend Acceleration", animGroup, 1, 20, 3, 0.5, 20);
+	std::string choices[] = { "Power", "Sine", "Exponential", "Circular" };
+	ChoiceParamDescriptor* choiceParam = defineChoiceParam(p_Desc, "blend_curve", "Blend Curve", "Blend Curve", animGroup, 0, choices, 4);
+	page->addChild(*choiceParam);
+
+	param = defineParam(p_Desc, "accel", "Power Acceleration", "Power Acceleration", animGroup, 1, 20, 3, 0.5, 20);
 	page->addChild(*param);
 
 	GroupParamDescriptor* cameraSelctionParamsGroup = p_Desc.defineGroupParam("cameraSelectionParams");
@@ -836,13 +880,13 @@ void Reframe360Factory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
 	page->addChild(*intParam);
 
 	// Make the camera 2 params
-	param = defineParam(p_Desc, "aux_pitch", "Pitch", "Up/down camera rotation", camera2ParamsGroup, -90, 90, 0);
+	param = defineAngleParam(p_Desc, "aux_pitch", "Pitch", "Up/down camera rotation", camera2ParamsGroup, -90, 90, 0);
 	page->addChild(*param);
 
-	param = defineParam(p_Desc, "aux_yaw", "Yaw", "Left/right camera rotation", camera2ParamsGroup, -180, 180, 0);
+	param = defineAngleParam(p_Desc, "aux_yaw", "Yaw", "Left/right camera rotation", camera2ParamsGroup, -180, 180, 0);
 	page->addChild(*param);
 
-	param = defineParam(p_Desc, "aux_roll", "Roll", "Camera Roll", camera2ParamsGroup, -180, 180, 0);
+	param = defineAngleParam(p_Desc, "aux_roll", "Roll", "Camera Roll", camera2ParamsGroup, -180, 180, 0);
 	page->addChild(*param);
 
 	param = defineParam(p_Desc, "aux_fov", "Field of View", "Camera field of view", camera2ParamsGroup, 0.15f, 5, 1);
@@ -861,13 +905,13 @@ void Reframe360Factory::describeInContext(OFX::ImageEffectDescriptor& p_Desc, OF
 	hiddenCameraParamsGroup->setIsSecret(true);
 
 	for (int i = 0; i < MAX_CAM_NUM; i++){ 
-		param = defineParam(p_Desc, paramIdForCam("aux_pitch", i), "Pitch", "Up/down camera rotation", hiddenCameraParamsGroup, -90, 90, 0);
+		param = defineAngleParam(p_Desc, paramIdForCam("aux_pitch", i), "Pitch", "Up/down camera rotation", hiddenCameraParamsGroup, -90, 90, 0);
 		page->addChild(*param);
 
-		param = defineParam(p_Desc, paramIdForCam("aux_yaw", i), "Yaw", "Left/right camera rotation", hiddenCameraParamsGroup, -180, 180, 0);
+		param = defineAngleParam(p_Desc, paramIdForCam("aux_yaw", i), "Yaw", "Left/right camera rotation", hiddenCameraParamsGroup, -180, 180, 0);
 		page->addChild(*param);
 
-		param = defineParam(p_Desc, paramIdForCam("aux_roll", i), "Roll", "Camera Roll", hiddenCameraParamsGroup, -180, 180, 0);
+		param = defineAngleParam(p_Desc, paramIdForCam("aux_roll", i), "Roll", "Camera Roll", hiddenCameraParamsGroup, -180, 180, 0);
 		page->addChild(*param);
 
 		param = defineParam(p_Desc, paramIdForCam("aux_fov", i), "Field of View", "Camera field of view", hiddenCameraParamsGroup, 0.15f, 5, 1);
@@ -939,6 +983,70 @@ void Reframe360::setHiddenParam(std::string name, int cam, double value){
 	else if (name.find("recti") != std::string::npos){
 		m_Recti2[cam]->setValue(value);
 	}
+}
+
+float Reframe360::InterpBlendAlpha(float cam_alpha, const OFX::RenderArguments& p_Args, float offset) const
+{
+	float blend = cam_alpha;
+	float* range;
+
+	if (blend < 0.5)
+	{
+		range = new float[] { 0, 0.5, 0, 1 };
+	}
+	else
+	{
+		range = new float[] { 0.5, 1, 1, 0 };
+	}
+
+	blend = fitRange(blend, range[0], range[1], range[2], range[3]);
+	blend = ApplyBlendCurve(blend, p_Args, offset);
+	blend = fitRange(blend, range[2], range[3], range[0], range[1]);
+
+	delete[] range;
+
+	return blend;
+}
+
+float Reframe360::ApplyBlendCurve(float alpha, const OFX::RenderArguments& p_Args, float offset) const
+{
+	int blendCurve;
+	float blend;
+
+	m_BlendCurve->getValueAtTime(p_Args.time, blendCurve);
+
+	switch (blendCurve)
+	{
+	    case 0: // Power
+	    {
+		    float accel = interpParam(m_Accel, p_Args, offset);
+
+		    blend = std::pow(alpha, accel);
+		    break;
+	    }
+	    case 1: // Sine
+	    {
+		    blend = 1 - std::cos((alpha * M_PI) / 2);
+		    break;
+	    }
+		case 2: // Exponential
+		{
+			blend = alpha == 0 ? 0 : std::pow(2, 10 * alpha - 10);
+			break;
+		}
+		case 3: // Circular
+		{
+			blend = 1 - sqrt(1 - pow(alpha, 2));
+			break;
+		}
+		default: // Linear
+	    {
+			blend = alpha;
+			break;
+	    }
+	}
+
+	return blend;
 }
 
 bool Reframe360::needsInterPolation(OFX::IntParam* param, double time) {

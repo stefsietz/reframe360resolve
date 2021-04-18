@@ -150,7 +150,9 @@ inline vec4 linInterpCol(vec2 uv, OFX::Image *image, OfxRectI procWindow, int wi
 	return outCol;
 }
 
-static float fitRange(float value, float in_min, float in_max, float out_min, float out_max){
+static float fitRange(float value, float in_min, float in_max, float out_min, float out_max)
+{
 	float out = out_min + ((out_max - out_min) / (in_max - in_min)) * (value - in_min);
-	return std::min(out_max, std::max(out, out_min));
+
+	return std::min(std::max(out_min, out_max), std::max(out, std::min(out_min, out_max)));
 }
