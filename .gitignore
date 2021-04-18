@@ -5,3 +5,4 @@
 *.tlog
 x64/
 .vs/
+*.log
