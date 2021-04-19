@@ -7,9 +7,10 @@
 #include <stdio.h>
 
 #ifdef __APPLE__
-#include <OpenCL/cl.hpp>
+#include <OpenCL/cl.h>
+#include <string>
 #else
-#include <CL/cl.hpp>
+#include <CL/cl.h>
 #endif
 
 #include "OpenCLKernel.h"

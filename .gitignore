@@ -2,3 +2,6 @@
 *.hdr
 *.o
 Reframe360.ofx
+.DS_Store
+
+
