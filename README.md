@@ -1,6 +1,4 @@
-# reframe360resolve
-
-Reframe360 XL
+# Reframe360 XL
 
 This plugin is an extension of the excellent Reframe360 (http://reframe360.com/) plugin by Stefan Sietzen.  Once Stefan release the source code, I got to work to add features and fix bugs and it became Reframe360 XL.  XL is used to point out that new features were put in place and is also a nudge to the excellent SkaterXL game.
 
