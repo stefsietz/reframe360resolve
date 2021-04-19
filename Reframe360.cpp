@@ -5,10 +5,10 @@
 #include "ofxsProcessing.h"
 #include "ofxsLog.h"
 
-#define kPluginName "Reframe360"
-#define kPluginGrouping "Reframe360"
+#define kPluginName "Reframe360 XL"
+#define kPluginGrouping "Reframe360 XL"
 #define kPluginDescription "Lets you animate a virtual camera in your 360 footage."
-#define kPluginIdentifier "at.stefansietzen.Reframe360Plugin"
+#define kPluginIdentifier "net.lerondpoint.Reframe360XLPlugin"
 #define kPluginVersionMajor 1
 #define kPluginVersionMinor 0
 
