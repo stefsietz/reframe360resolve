@@ -59,9 +59,12 @@ class ImageScaler : public OFX::ImageProcessor
 public:
     explicit ImageScaler(OFX::ImageEffect& p_Instance);
 
+#ifndef __APPLE__
     virtual void processImagesCUDA();
+#endif
     virtual void processImagesOpenCL();
-#if defined(__APPLE__)
+//diasble Metal since there is not yet a metal kernel
+#if defined(DISABLED__APPLE__)
     virtual void processImagesMetal();
 #endif
     virtual void multiThreadProcessImages(OfxRectI p_ProcWindow);
@@ -137,6 +140,8 @@ void matMul(const float* y, const float* p, float** outmat){
 	(*outmat)[8] = p[2] * y[6] + p[5] * y[7] + p[8] * y[8];
 }
 
+//disable Cuda since there is no Cuda under MacOS
+#ifndef __APPLE__
 extern void RunCudaKernel(int p_Width, int p_Height, float* p_Fov, float* p_Tinyplanet, float* p_Rectilinear, const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples, bool p_Bilinear);
 
 void ImageScaler::processImagesCUDA()
@@ -150,8 +155,10 @@ void ImageScaler::processImagesCUDA()
 
 	RunCudaKernel(width, height, _fov, _tinyplanet, _rectilinear, input, output, _rotMat, _samples, _bilinear);
 }
+#endif
 
-#if defined(__APPLE__)
+//diasble Metal since there is not yet a metal kernel
+#if defined(DISABLED__APPLE__)
 extern void RunMetalKernel(int p_Width, int p_Height, float* p_Gain, const float* p_Input, float* p_Output);
 
 void ImageScaler::processImagesMetal()
