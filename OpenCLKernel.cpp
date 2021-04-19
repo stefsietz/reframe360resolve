@@ -7,7 +7,8 @@
 #include <stdio.h>
 
 #ifdef __APPLE__
-#include <OpenCL/cl.hpp>
+#include <OpenCL/cl.h>
+#include <string>
 #else
 #include <CL/cl.hpp>
 #endif
@@ -71,12 +72,14 @@ private:
 #endif
 };
 
+#ifdef _WIN64
 static HMODULE GetThisDllHandle()
 {
 	MEMORY_BASIC_INFORMATION info;
 	size_t len = VirtualQueryEx(GetCurrentProcess(), (void*)GetThisDllHandle, &info, sizeof(info));
 	return len ? (HMODULE)info.AllocationBase : NULL;
 }
+#endif
 
 void RunOpenCLKernel(void* p_CmdQ, int p_Width, int p_Height, float* p_Fov, float* p_Tinyplanet, float* p_Rectilinear, const float* p_Input, float* p_Output, float* p_RotMat, int p_Samples, bool p_Bilinear)
 {
