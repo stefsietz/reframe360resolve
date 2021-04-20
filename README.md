@@ -10,7 +10,8 @@ New features and bug fixes:
 
 Enjoy!
 
-# Installation on MacOS
+# Installation on MacOS (Intel and Apple Silicon)
+* Build tested on MacOS 11.2.3 / XCode 12.4
 * Install latest XCode from Apple App store
 * Install Blackmagic DaVinci Resolve from Blackmagic website (free or studio version)
 * clone glm repository https://github.com/bclarksoftware/glm.git
@@ -18,5 +19,5 @@ Enjoy!
 * and build
 ````
 cd reframe360XL
-make install
+make
 ````
