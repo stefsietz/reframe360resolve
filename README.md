@@ -21,3 +21,6 @@ Enjoy!
 cd reframe360XL
 make
 ````
+# Binary for MacOS
+* use https://github.com/eltorio/reframe360XL/releases/download/0.1/Reframe360.ofx.bundle.zip
+* uncompress it and puts it to /Library/OFX/Plugins
