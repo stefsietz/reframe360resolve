@@ -8,19 +8,21 @@ CXXFLAGS = -std=c++11 -fvisibility=hidden -I$(OFXPATH)/include -I$(BMDOFXDEVPATH
 ifeq ($(UNAME_SYSTEM), Linux)
 	BMDOFXDEVPATH = /opt/resolve/Developer
 	OPENCLPATH = /opt/AMDAPP
-	CXXFLAGS += -I${OPENCLPATH}/include -fPIC
+	CXXFLAGS += -I${OPENCLPATH}/include -fPIC -D__OPENCL__
 	NVCCFLAGS = --compiler-options="-fPIC"
 	LDFLAGS = -shared -fvisibility=hidden -L${CUDAPATH}/lib64 -lcuda -lcudart
 	BUNDLE_DIR = Reframe360.ofx.bundle/Contents/Linux-x86-64/
 	CUDA_OBJ =  CudaKernel.o
+	OPENCL_OBJ = OpenCLKernel.o
 else
 	BMDOFXDEVPATH = /Library/Application\ Support/Blackmagic\ Design/DaVinci\ Resolve/Developer/OpenFX
 	LDFLAGS = -bundle -fvisibility=hidden -F/Library/Frameworks -framework OpenCL -framework Metal -framework AppKit
 	BUNDLE_DIR = Reframe360.ofx.bundle/Contents/MacOS/
-	METAL_OBJ = MetalKernel.o
+	METAL_OBJ = Reframe360Kernel.o
+	OPENCL_OBJ = OpenCLKernel.o
 endif
 
-Reframe360.ofx: Reframe360.o OpenCLKernel.o $(CUDA_OBJ) $(METAL_OBJ) ofxsCore.o ofxsImageEffect.o ofxsInteract.o ofxsLog.o ofxsMultiThread.o ofxsParams.o ofxsProperty.o ofxsPropertyValidation.o
+Reframe360.ofx:  Reframe360.o $(OPENCL_OBJ) $(CUDA_OBJ) $(METAL_OBJ) ofxsCore.o ofxsImageEffect.o ofxsInteract.o ofxsLog.o ofxsMultiThread.o ofxsParams.o ofxsProperty.o ofxsPropertyValidation.o
 	$(CXX) $^ -o $@ $(LDFLAGS)
 	mkdir -p $(BUNDLE_DIR)
 	cp Reframe360.ofx $(BUNDLE_DIR)
@@ -28,7 +30,11 @@ Reframe360.ofx: Reframe360.o OpenCLKernel.o $(CUDA_OBJ) $(METAL_OBJ) ofxsCore.o 
 CudaKernel.o: CudaKernel.cu
 	${NVCC} -c $< $(NVCCFLAGS)
 
-MetalKernel.o: MetalKernel.mm
+Reframe360.o: Reframe360.cpp
+	$(CXX) -c $< $(CXXFLAGS)
+	
+Reframe360Kernel.o: Reframe360Kernel.mm
+	python metal2string.py Reframe360Kernel.metal Reframe360Kernel.h
 	$(CXX) -c $< $(CXXFLAGS)
 
 ofxsCore.o: $(BMDOFXDEVPATH)/Support/Library/ofxsCore.cpp
@@ -54,13 +60,21 @@ ofxsProperty.o: $(BMDOFXDEVPATH)/Support/Library/ofxsProperty.cpp
 
 ofxsPropertyValidation.o: $(BMDOFXDEVPATH)/Support/Library/ofxsPropertyValidation.cpp
 	$(CXX) -c "$<" $(CXXFLAGS)
-	
+
+Reframe360Kernel.h: Reframe360Kernel.metal
+	python metal2string.py Reframe360Kernel.metal Reframe360Kernel.h
+
+%.metallib: %.metal
+	xcrun -sdk macosx metal -c $< -o $@
+	mkdir -p $(BUNDLE_DIR)
+	cp $@ $(BUNDLE_DIR)
+
 clean:
 	rm -f *.o *.ofx
 	rm -fr Reframe360.ofx.bundle
 
 ifeq ($(UNAME_SYSTEM), Darwin)
-install:
+install: Reframe360.ofx
 	rm -rf /Library/OFX/Plugins/Reframe360.ofx.bundle
 	cp -a Reframe360.ofx.bundle /Library/OFX/Plugins/
 endif
