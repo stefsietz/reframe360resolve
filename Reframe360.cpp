@@ -756,7 +756,7 @@ static DoubleParamDescriptor* defineParam(OFX::ImageEffectDescriptor& p_Desc, co
 static DoubleParamDescriptor* defineAngleParam(OFX::ImageEffectDescriptor& p_Desc, const std::string& p_Name,
                                                const std::string& p_Label,
                                                const std::string& p_Hint, GroupParamDescriptor* p_Parent, float min,
-                                               float max, float default, float hardmin = INT_MIN,
+                                               float max, float default_value, float hardmin = INT_MIN,
                                                float hardmax = INT_MAX)
 {
     DoubleParamDescriptor* param = p_Desc.defineDoubleParam(p_Name);
@@ -764,7 +764,7 @@ static DoubleParamDescriptor* defineAngleParam(OFX::ImageEffectDescriptor& p_Des
     param->setLabels(p_Label, p_Label, p_Label);
     param->setScriptName(p_Name);
     param->setHint(p_Hint);
-    param->setDefault(default);
+    param->setDefault(default_value);
     param->setRange(hardmin, hardmax);
     param->setIncrement(0.1);
     param->setDisplayRange(min, max);
@@ -781,14 +781,14 @@ static DoubleParamDescriptor* defineAngleParam(OFX::ImageEffectDescriptor& p_Des
 static IntParamDescriptor* defineIntParam(OFX::ImageEffectDescriptor& p_Desc, const std::string& p_Name,
                                           const std::string& p_Label,
                                           const std::string& p_Hint, GroupParamDescriptor* p_Parent, int min, int max,
-                                          int default, int hardmin = INT_MIN, int hardmax = INT_MAX)
+                                          int default_value, int hardmin = INT_MIN, int hardmax = INT_MAX)
 {
     IntParamDescriptor* param = p_Desc.defineIntParam(p_Name);
 
     param->setLabels(p_Label, p_Label, p_Label);
     param->setScriptName(p_Name);
     param->setHint(p_Hint);
-    param->setDefault(default);
+    param->setDefault(default_value);
     param->setRange(hardmin, hardmax);
     param->setDisplayRange(min, max);
 
@@ -802,7 +802,7 @@ static IntParamDescriptor* defineIntParam(OFX::ImageEffectDescriptor& p_Desc, co
 
 static ChoiceParamDescriptor* defineChoiceParam(OFX::ImageEffectDescriptor& p_Desc, const std::string& p_Name,
                                                 const std::string& p_Label,
-                                                const std::string& p_Hint, GroupParamDescriptor* p_Parent, int default,
+                                                const std::string& p_Hint, GroupParamDescriptor* p_Parent, int default_value,
                                                 std::string p_ChoiceLabels[], int choiceCount)
 {
     ChoiceParamDescriptor* param = p_Desc.defineChoiceParam(p_Name);
@@ -810,7 +810,7 @@ static ChoiceParamDescriptor* defineChoiceParam(OFX::ImageEffectDescriptor& p_De
     param->setLabels(p_Label, p_Label, p_Label);
     param->setScriptName(p_Name);
     param->setHint(p_Hint);
-    param->setDefault(default);
+    param->setDefault(default_value);
 
     for (int i = 0; i < choiceCount; ++i)
     {
@@ -830,14 +830,14 @@ static ChoiceParamDescriptor* defineChoiceParam(OFX::ImageEffectDescriptor& p_De
 static BooleanParamDescriptor* defineBooleanParam(OFX::ImageEffectDescriptor& p_Desc, const std::string& p_Name,
                                                   const std::string& p_Label,
                                                   const std::string& p_Hint, GroupParamDescriptor* p_Parent,
-                                                  bool default)
+                                                  bool default_value)
 {
     BooleanParamDescriptor* param = p_Desc.defineBooleanParam(p_Name);
 
     param->setLabels(p_Label, p_Label, p_Label);
     param->setScriptName(p_Name);
     param->setHint(p_Hint);
-    param->setDefault(default);
+    param->setDefault(default_value );
 
     if (p_Parent)
     {
