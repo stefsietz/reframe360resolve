@@ -6,3 +6,6 @@
 x64/
 .vs/
 *.log
+*.o
+Reframe360.ofx
+.DS_Store

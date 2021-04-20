@@ -1,9 +1,7 @@
 #include "Reframe360.h"
-#include <stdio.h>
 #include "ofxsImageEffect.h"
 #include "ofxsMultiThread.h"
 #include "ofxsProcessing.h"
-#include "ofxsLog.h"
 
 #define kPluginName "Reframe360 XL"
 #define kPluginGrouping "Reframe360 XL"
@@ -32,9 +30,12 @@ class ImageScaler : public OFX::ImageProcessor
 public:
     explicit ImageScaler(OFX::ImageEffect& p_Instance);
 
+#ifndef __APPLE__
     virtual void processImagesCUDA();
+#endif
     virtual void processImagesOpenCL();
-#if defined(__APPLE__)
+// disable Metal since there is not yet a metal kernel
+#if defined(DISABLED__APPLE__)
     virtual void processImagesMetal();
 #endif
     virtual void multiThreadProcessImages(OfxRectI p_ProcWindow);
@@ -111,8 +112,8 @@ void matMul(const float* y, const float* p, float** outmat)
     (*outmat)[8] = p[2] * y[6] + p[5] * y[7] + p[8] * y[8];
 }
 
-extern void RunCudaKernel(int p_Width, int p_Height, float* p_Fov, float* p_Tinyplanet, float* p_Rectilinear,
-                          const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples, bool p_Bilinear);
+#ifndef __APPLE__
+extern void RunCudaKernel(int p_Width, int p_Height, float* p_Fov, float* p_Tinyplanet, float* p_Rectilinear, const float* p_Input, float* p_Output, const float* p_RotMat, int p_Samples, bool p_Bilinear);
 
 void ImageScaler::processImagesCUDA()
 {
@@ -125,8 +126,10 @@ void ImageScaler::processImagesCUDA()
 
     RunCudaKernel(width, height, _fov, _tinyplanet, _rectilinear, input, output, _rotMat, _samples, _bilinear);
 }
+#endif
 
-#if defined(__APPLE__)
+//diasble Metal since there is not yet a metal kernel
+#if defined(DISABLED__APPLE__)
 extern void RunMetalKernel(int p_Width, int p_Height, float* p_Gain, const float* p_Input, float* p_Output);
 
 void ImageScaler::processImagesMetal()
@@ -429,16 +432,7 @@ Reframe360::Reframe360(OfxImageEffectHandle p_Handle)
 
 void Reframe360::render(const OFX::RenderArguments& p_Args)
 {
-    /*#ifdef BETA_FAIL
-        time_t time_ = time(NULL);
-
-        if (time_ > BETA_FAIL_TIME) {
-            return;
-        }
-    #endif*/
-
-    if ((m_DstClip->getPixelDepth() == OFX::eBitDepthFloat) && (m_DstClip->getPixelComponents() == OFX::
-        ePixelComponentRGBA))
+    if ((m_DstClip->getPixelDepth() == OFX::eBitDepthFloat) && (m_DstClip->getPixelComponents() == OFX::ePixelComponentRGBA))
     {
         ImageScaler imageScaler(*this);
         setupAndProcess(imageScaler, p_Args);
@@ -738,15 +732,15 @@ void Reframe360Factory::describe(OFX::ImageEffectDescriptor& p_Desc)
 static DoubleParamDescriptor* defineParam(OFX::ImageEffectDescriptor& p_Desc, const std::string& p_Name,
                                           const std::string& p_Label,
                                           const std::string& p_Hint, GroupParamDescriptor* p_Parent, float min,
-                                          float max, float default, float hardmin = INT_MIN, float hardmax = INT_MAX)
+                                          float max, float default_value, float hardmin = INT_MIN, float hardmax = INT_MAX)
 {
     DoubleParamDescriptor* param = p_Desc.defineDoubleParam(p_Name);
 
     param->setLabels(p_Label, p_Label, p_Label);
     param->setScriptName(p_Name);
     param->setHint(p_Hint);
-    param->setDefault(default);
-    param->setRange(hardmin, hardmax);
+    param->setDefault(default_value);
+	param->setRange(hardmin, hardmax);
     param->setIncrement(0.1);
     param->setDisplayRange(min, max);
     param->setDoubleType(eDoubleTypePlain);
