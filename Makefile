@@ -115,15 +115,18 @@ Reframe360Kernel.h: Reframe360Kernel.metal
 	mkdir -p $(BUNDLE_DIR)
 	cp $@ $(BUNDLE_DIR)
 
+macos-bin: install-universal
+	zip -r Reframe360.ofx.bundle.zip Reframe360.ofx.bundle
+
 clean:
-	rm -f *.o *.ofx
+	rm -f *.o *.ofx *.zip *.metallib
 	rm -fr Reframe360.ofx.bundle
 
 ifeq ($(UNAME_SYSTEM), Darwin)
 .DEFAULT_GOAL := darwin
 
 .PHONY: darwin
-darwin: clean install-universal
+darwin: clean install-universal macos-bin
 
 install: Reframe360.ofx
 	rm -rf /Library/OFX/Plugins/Reframe360.ofx.bundle

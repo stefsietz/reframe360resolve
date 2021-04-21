@@ -160,7 +160,7 @@ kernel void Reframe360Kernel(constant int& p_Width [[buffer (11)]],
         
         for(int i=0; i<samples; i++){
             
-            float fov = p_Fov[i]; //Why indexed on i?
+            float fov = p_Fov[i]; //Motion blur samples
             
             float2 uv = { (float)id.x / p_Width, (float)id.y / p_Height };
             float aspect = (float)p_Width / (float)p_Height;
@@ -174,9 +174,9 @@ kernel void Reframe360Kernel(constant int& p_Width [[buffer (11)]],
             float3 tinyplanet = tinyPlanetSph(dir);
             tinyplanet = normalize(tinyplanet);
             
-            const float3 r012 = {r[i*9+0], r[i*9+1], r[i*9+2]}; //Why indexed on i?
-            const float3 r345 = {r[i*9+3], r[i*9+4], r[i*9+5]}; //Why indexed on i?
-            const float3 r678 = {r[i*9+6], r[i*9+7], r[i*9+8]}; //Why indexed on i?
+            const float3 r012 = {r[i*9+0], r[i*9+1], r[i*9+2]}; //Motion blur samples
+            const float3 r345 = {r[i*9+3], r[i*9+4], r[i*9+5]}; //each rotation matrix is pitched
+            const float3 r678 = {r[i*9+6], r[i*9+7], r[i*9+8]}; //
             
             tinyplanet = matMul(r012, r345, r678, tinyplanet);
             float3 rectdir = matMul(r012, r345, r678, dir);
