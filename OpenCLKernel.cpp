@@ -1,16 +1,17 @@
+#include <map>
+#include <stdio.h>
+#include <string>
+
 #ifdef _WIN64
 #include <Windows.h>
 #else
 #include <pthread.h>
 #endif
-#include <map>
-#include <stdio.h>
 
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
-#include <string>
 #else
-#include <CL/cl.hpp>
+#include <CL/cl.h>
 #endif
 
 #include "OpenCLKernel.h"

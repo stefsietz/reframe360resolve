@@ -1,9 +1,7 @@
 #include "Reframe360.h"
-#include <stdio.h>
 #include "ofxsImageEffect.h"
 #include "ofxsMultiThread.h"
 #include "ofxsProcessing.h"
-#include "ofxsLog.h"
 
 #define kPluginName "Reframe360 XL"
 #define kPluginGrouping "Reframe360 XL"
@@ -443,16 +441,7 @@ Reframe360::Reframe360(OfxImageEffectHandle p_Handle)
 
 void Reframe360::render(const OFX::RenderArguments& p_Args)
 {
-    /*#ifdef BETA_FAIL
-        time_t time_ = time(NULL);
-
-        if (time_ > BETA_FAIL_TIME) {
-            return;
-        }
-    #endif*/
-
-    if ((m_DstClip->getPixelDepth() == OFX::eBitDepthFloat) && (m_DstClip->getPixelComponents() == OFX::
-        ePixelComponentRGBA))
+    if ((m_DstClip->getPixelDepth() == OFX::eBitDepthFloat) && (m_DstClip->getPixelComponents() == OFX::ePixelComponentRGBA))
     {
         ImageScaler imageScaler(*this);
         setupAndProcess(imageScaler, p_Args);
