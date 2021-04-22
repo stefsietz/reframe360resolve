@@ -32,6 +32,9 @@ float2 repairUv(float2 uv){
 		outuv.y = uv.y;
 	}
 
+	outuv.x = min(max(outuv.x, 0.0f), 1.0f);
+	outuv.y = min(max(outuv.y, 0.0f), 1.0f);
+
 	return outuv;
 }
 
@@ -112,13 +115,15 @@ float4 linInterpCol(float2 uv, __global const float* input, int width, int heigh
 	float b = uv.y - j;
 	int x = (int)i;
 	int y = (int)j;
+	int x1 = (x < width - 1 ? x + 1 : x);
+	int y1 = (y < height - 1 ? y + 1 : y);
 	const int indexX1Y1 = ((y * width) + x) * 4;
-	const int indexX2Y1 = ((y * width) + x + 1) * 4;
-	const int indexX1Y2 = (((y + 1) * width) + x) * 4;
-	const int indexX2Y2 = (((y + 1) * width) + x + 1) * 4;
+	const int indexX2Y1 = ((y * width) + x1) * 4;
+	const int indexX1Y2 = (((y1) * width) + x) * 4;
+	const int indexX2Y2 = (((y1) * width) + x1) * 4;
 	const int maxIndex = (width * height - 1) * 4;
 
-	if (indexX2Y2 < maxIndex - height - 100){
+	if (indexX2Y2 < maxIndex){
 		outCol.x = (1.0 - a)*(1.0 - b)*input[indexX1Y1] + a*(1.0 - b)*input[indexX2Y1] + (1.0 - a)*b*input[indexX1Y2] + a*b*input[indexX2Y2];
 		outCol.y = (1.0 - a)*(1.0 - b)*input[indexX1Y1 + 1] + a*(1.0 - b)*input[indexX2Y1 + 1] + (1.0 - a)*b*input[indexX1Y2 + 1] + a*b*input[indexX2Y2 + 1];
 		outCol.z = (1.0 - a)*(1.0 - b)*input[indexX1Y1 + 2] + a*(1.0 - b)*input[indexX2Y1 + 2] + (1.0 - a)*b*input[indexX1Y2 + 2] + a*b*input[indexX2Y2 + 2];

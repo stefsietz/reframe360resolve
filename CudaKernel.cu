@@ -11,7 +11,7 @@ __device__ float3 matMul(const float3 r012, const float3 r345, const float3 r678
 }
 
 __device__ float2 repairUv(float2 uv){
-	float2 outuv = {0, 0};
+	float2 outuv;
 
 	if(uv.x<0) {
 		outuv.x = 1.0 + uv.x;
@@ -28,6 +28,9 @@ __device__ float2 repairUv(float2 uv){
 		} else {
 			outuv.y = uv.y;
 		}
+
+	outuv.x = min(max(outuv.x, 0.0), 1.0);
+	outuv.y = min(max(outuv.y, 0.0), 1.0);
 
 	return outuv;
 }
@@ -52,10 +55,13 @@ __device__ float2 polarCoord(float3 dir) {
 
 
 __device__ float3 fisheyeDir(float3 dir, const float3 r012, const float3 r345, const float3 r678) {
-	
+
+	if (dir.x == 0 && dir.y == 0)
+		return matMul(r012, r345, r678, dir);
+		
 	dir.x = dir.x / dir.z;
 	dir.y = dir.y / dir.z;
-	dir.z = dir.z / dir.z;
+	dir.z = 1;
 	
 	float2 uv;
 	uv.x = dir.x;
@@ -77,7 +83,10 @@ __device__ float3 fisheyeDir(float3 dir, const float3 r012, const float3 r345, c
 }
 
 __device__ float3 tinyPlanetSph(float3 uv) {
-	float3 sph;
+	if (uv.x == 0 && uv.y == 0)
+		return uv;
+
+    float3 sph;
 	float2 uvxy;
 	uvxy.x = uv.x/uv.z;
 	uvxy.y = uv.y/uv.z;
@@ -108,13 +117,15 @@ __device__ float4 linInterpCol(float2 uv, const float* input, int width, int hei
 	float b = uv.y-j;
 	int x = (int)i;
 	int y = (int)j;
+	int x1 = (x < width - 1 ? x + 1 : x);
+	int y1 = (y < height - 1 ? y + 1 : y);
 	const int indexX1Y1 = ((y * width) + x) * 4;
-	const int indexX2Y1 = ((y * width) + x+1) * 4;
-	const int indexX1Y2 = (((y+1) * width) + x) * 4;
-	const int indexX2Y2 = (((y+1) * width) + x+1) * 4;
+	const int indexX2Y1 = ((y * width) + x1) * 4;
+	const int indexX1Y2 = (((y1) * width) + x) * 4;
+	const int indexX2Y2 = (((y1) * width) + x1) * 4;
 	const int maxIndex = (width * height -1) * 4;
 	
-	if(indexX2Y2 < maxIndex-height - 100){
+	if(indexX2Y2 < maxIndex){
 		outCol.x = (1.0 - a)*(1.0 - b)*input[indexX1Y1] + a*(1.0 - b)*input[indexX2Y1] + (1.0 - a)*b*input[indexX1Y2] + a*b*input[indexX2Y2];
 		outCol.y = (1.0 - a)*(1.0 - b)*input[indexX1Y1 + 1] + a*(1.0 - b)*input[indexX2Y1 + 1] + (1.0 - a)*b*input[indexX1Y2 + 1] + a*b*input[indexX2Y2 + 1];
 		outCol.z = (1.0 - a)*(1.0 - b)*input[indexX1Y1 + 2] + a*(1.0 - b)*input[indexX2Y1 + 2] + (1.0 - a)*b*input[indexX1Y2 + 2] + a*b*input[indexX2Y2 + 2];
@@ -147,8 +158,8 @@ __global__ void GainAdjustKernel(int p_Width, int p_Height, float* p_Fov, float*
 		   float aspect = (float)p_Width / (float)p_Height;
 
 		   float3 dir = { 0, 0, 0 };
-		   dir.x = (uv.x - 0.5)*2.0;
-		   dir.y = (uv.y - 0.5)*2.0;
+		   dir.x = (uv.x * 2) - 1;
+		   dir.y = (uv.y * 2) - 1;
 		   dir.y /= aspect;
 		   dir.z = fov;
 
@@ -165,7 +176,6 @@ __global__ void GainAdjustKernel(int p_Width, int p_Height, float* p_Fov, float*
 		   rectdir = normalize(rectdir);
 		   dir = lerp(fisheyeDir(dir, r012, r345, r678), tinyplanet, p_Tinyplanet[i]);
 		   dir = lerp(dir, rectdir, p_Rectilinear[i]);
-
 
 		   float2 iuv = polarCoord(dir);
 		   iuv = repairUv(iuv);
