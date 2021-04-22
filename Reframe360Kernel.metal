@@ -1,6 +1,6 @@
 //
-//  GainAdjustKernel.metal
-//  GainAdjustKernel
+//  Reframe360Kernel.metal
+//  Reframe360Kernel
 //
 //  Created by Ronan LE MEILLAT on 19/04/2021.
 //

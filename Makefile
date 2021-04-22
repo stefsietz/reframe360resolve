@@ -3,7 +3,7 @@ UNAME_SYSTEM := $(shell uname -s)
 GLMPATH = ../glm
 CUDAPATH ?= /usr/local/cuda
 NVCC = ${CUDAPATH}/bin/nvcc
-CXXFLAGS = -std=c++11 -fvisibility=hidden -I$(OFXPATH)/include -I$(BMDOFXDEVPATH)/Support/include -I$(BMDOFXDEVPATH)/OpenFX-1.4/include -I$(GLMPATH)
+CXXFLAGS += -std=c++11 -fvisibility=hidden -I$(OFXPATH)/include -I$(BMDOFXDEVPATH)/Support/include -I$(BMDOFXDEVPATH)/OpenFX-1.4/include -I$(GLMPATH)
 
 ifeq ($(UNAME_SYSTEM), Linux)
 	BMDOFXDEVPATH = /opt/resolve/Developer
@@ -41,8 +41,11 @@ Reframe360Kernel.o: Reframe360Kernel.mm
 	python metal2string.py Reframe360Kernel.metal Reframe360Kernel.h
 	$(CXX) $(APPLE86_64_FLAG) -c $< $(CXXFLAGS)
 
-OpenCLKernel.o: OpenCLKernel.cpp
-	$(CXX) $(APPLE86_64_FLAG) -c $< $(CXXFLAGS) -o $@
+OpenCLKernel.o: OpenCLKernel.h OpenCLKernel.cpp
+	$(CXX) $(APPLE86_64_FLAG) -c OpenCLKernel.cpp $(CXXFLAGS) -o OpenCLKernel.o
+
+OpenCLKernel.h: Reframe360Kernel.cl
+	python ./HardcodeKernel.py OpenCLKernel Reframe360Kernel.cl
 
 ofxsCore.o: $(BMDOFXDEVPATH)/Support/Library/ofxsCore.cpp
 	$(CXX) $(APPLE86_64_FLAG) -c "$<" $(CXXFLAGS)
@@ -80,8 +83,8 @@ Reframe360Kernel-arm.o: Reframe360Kernel.mm
 	python metal2string.py Reframe360Kernel.metal Reframe360Kernel.h
 	$(CXX) $(APPLEARM64_FLAG) -c $< $(CXXFLAGS) -o $@
 
-OpenCLKernel-arm.o: OpenCLKernel.cpp
-	$(CXX) $(APPLEARM64_FLAG) -c $< $(CXXFLAGS) -o $@
+OpenCLKernel-arm.o: OpenCLKernel.h OpenCLKernel.cpp
+	$(CXX) $(APPLEARM64_FLAG) -c OpenCLKernel.cpp $(CXXFLAGS) -o OpenCLKernel-arm.o
 	
 ofxsCore-arm.o: $(BMDOFXDEVPATH)/Support/Library/ofxsCore.cpp
 	$(CXX) $(APPLEARM64_FLAG) -c "$<" $(CXXFLAGS) -o $@
@@ -119,7 +122,7 @@ macos-bin: install-universal
 	zip -r Reframe360.ofx.bundle.zip Reframe360.ofx.bundle
 
 clean:
-	rm -f *.o *.ofx *.zip *.metallib
+	rm -f *.o *.ofx *.zip *.metallib Reframe360Kernel.h OpenCLKernel.h
 	rm -fr Reframe360.ofx.bundle
 
 ifeq ($(UNAME_SYSTEM), Darwin)
